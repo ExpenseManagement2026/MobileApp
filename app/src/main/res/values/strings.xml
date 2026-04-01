@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">MobileApp</string>
+
+    <string name="budget_current">Budget hiện tại: 0 đ</string>
+    <string name="hint_budget">Nhập budget</string>
+    <string name="save_budget">Lưu budget</string>
+
+    <string name="used_percent_default">Đã dùng: 0%</string>
+    <string name="remaining_default">Còn lại: 0 đ</string>
+    <string name="status_default">Trạng thái: An toàn</string>
 </resources>
