@@ -5,8 +5,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F7FA" tools:context=".SearchFragment">
+    android:background="#F5F7FA"
+    tools:context=".presentation.SearchFragment">
 
+    <!-- Header -->
     <TextView
         android:id="@+id/tvHeader"
         android:layout_width="wrap_content"
@@ -20,6 +22,20 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- Tổng số giao dịch -->
+    <TextView
+        android:id="@+id/tvTransactionCount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="20dp"
+        android:textColor="#757575"
+        android:textSize="13sp"
+        app:layout_constraintBottom_toBottomOf="@id/tvHeader"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/tvHeader"
+        tools:text="24 giao dịch" />
+
+    <!-- Ô tìm kiếm -->
     <EditText
         android:id="@+id/edtSearch"
         android:layout_width="0dp"
@@ -31,7 +47,10 @@
         android:drawablePadding="12dp"
         android:elevation="2dp"
         android:hint="Tìm kiếm giao dịch..."
-        android:paddingHorizontal="16dp"
+        android:imeOptions="actionSearch"
+        android:inputType="text"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
         android:singleLine="true"
         android:textColor="#333333"
         android:textColorHint="#9E9E9E"
@@ -40,13 +59,15 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvHeader" />
 
+    <!-- Bộ lọc nhanh -->
     <HorizontalScrollView
         android:id="@+id/scrollFilters"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="12dp"
         android:clipToPadding="false"
-        android:paddingHorizontal="20dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
         android:scrollbars="none"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -57,51 +78,140 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
+            <!-- Tất cả -->
             <Button
                 android:id="@+id/btnFilterAll"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="36dp"
                 android:layout_marginEnd="8dp"
+                android:backgroundTint="#2ECC71"
                 android:text="Tất cả"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
-                android:backgroundTint="#2ECC71" /> <Button
+                android:textSize="13sp" />
+
+            <!-- Hôm nay -->
+            <Button
                 android:id="@+id/btnFilterToday"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="36dp"
                 android:layout_marginEnd="8dp"
                 android:text="Hôm nay"
                 android:textAllCaps="false"
                 android:textColor="#757575"
+                android:textSize="13sp"
                 app:strokeColor="#E0E0E0" />
 
+            <!-- Tuần này -->
             <Button
                 android:id="@+id/btnFilterWeek"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="36dp"
                 android:layout_marginEnd="8dp"
                 android:text="Tuần này"
                 android:textAllCaps="false"
                 android:textColor="#757575"
+                android:textSize="13sp"
                 app:strokeColor="#E0E0E0" />
+
+            <!-- Tháng này -->
+            <Button
+                android:id="@+id/btnFilterMonth"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginEnd="8dp"
+                android:text="Tháng này"
+                android:textAllCaps="false"
+                android:textColor="#757575"
+                android:textSize="13sp"
+                app:strokeColor="#E0E0E0" />
+
+            <!-- Thu nhập -->
+            <Button
+                android:id="@+id/btnFilterIncome"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginEnd="8dp"
+                android:text="Thu nhập"
+                android:textAllCaps="false"
+                android:textColor="#2ECC71"
+                android:textSize="13sp"
+                app:strokeColor="#2ECC71" />
+
+            <!-- Chi tiêu -->
+            <Button
+                android:id="@+id/btnFilterExpense"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="Chi tiêu"
+                android:textAllCaps="false"
+                android:textColor="#F44336"
+                android:textSize="13sp"
+                app:strokeColor="#F44336" />
 
         </LinearLayout>
     </HorizontalScrollView>
 
+    <!-- Danh sách giao dịch -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvTransactions"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="8dp"
         android:clipToPadding="false"
-        android:paddingBottom="24dp"
+        android:paddingBottom="80dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/scrollFilters"
         tools:listitem="@layout/item_transaction" />
+
+    <!-- Trạng thái rỗng (empty state) -->
+    <LinearLayout
+        android:id="@+id/layoutEmptyState"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/scrollFilters"
+        tools:visibility="gone">
+
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:alpha="0.4"
+            android:src="@android:drawable/ic_menu_search"
+            app:tint="#9E9E9E" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Không tìm thấy giao dịch"
+            android:textColor="#9E9E9E"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:paddingHorizontal="40dp"
+            android:text="Thử tìm kiếm với từ khóa khác\nhoặc thay đổi bộ lọc"
+            android:textColor="#BDBDBD"
+            android:textSize="13sp" />
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
