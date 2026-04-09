@@ -39,7 +39,8 @@ data class DashboardUiState(
     val totalExpense: Long = 0L,        // Tổng chi
     val pieEntries: List<PieEntry> = emptyList(),           // Dữ liệu cho PieChart
     val pieColors: List<Int> = emptyList(),                 // Màu tương ứng từng slice
-    val topCategories: List<SpendingCategory> = emptyList() // Top 3 hạng mục chi nhiều nhất
+    val topCategories: List<SpendingCategory> = emptyList(), // Top 3 hạng mục chi nhiều nhất
+    val allCategories: List<SpendingCategory> = emptyList()  // Toàn bộ danh mục
 )
 
 // =============================================
@@ -127,7 +128,8 @@ class DashboardViewModel : ViewModel() {
                 totalExpense   = totalExpense,
                 pieEntries     = pieEntries,
                 pieColors      = pieColors,
-                topCategories  = categories.sortedByDescending { it.amount }.take(3)
+                topCategories  = categories.sortedByDescending { it.amount }.take(3),
+                allCategories  = categories.sortedByDescending { it.amount }
             )
         }
     }

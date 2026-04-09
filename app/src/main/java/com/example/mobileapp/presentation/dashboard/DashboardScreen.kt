@@ -2,6 +2,7 @@ package com.example.mobileapp.presentation.dashboard
 
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -236,6 +237,58 @@ fun DashboardScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // =============================================
+        // CARD - Toàn bộ danh mục chi tiêu
+        // =============================================
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Tất cả danh mục",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = Color(0xFF212121)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (uiState.isLoading) {
+                    repeat(5) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(20.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFFEEEEEE))
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                } else {
+                    // Hiển thị toàn bộ danh mục
+                    uiState.allCategories.forEachIndexed { index, category ->
+                        CategoryRow(
+                            category = category,
+                            totalExpense = uiState.totalExpense,
+                            onClick = { selectedCategory = category }
+                        )
+                        if (index < uiState.allCategories.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                color = Color(0xFFF0F0F0)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
     }
 
@@ -293,12 +346,20 @@ private fun SummaryCard(
 // COMPOSABLE - 1 dòng trong danh sách Top 3
 // =============================================
 @Composable
-private fun CategoryRow(category: SpendingCategory, totalExpense: Long) {
+private fun CategoryRow(
+    category: SpendingCategory,
+    totalExpense: Long,
+    onClick: () -> Unit
+) {
     val dotColor = Color(AndroidColor.parseColor(category.colorHex))
     val percent = if (totalExpense > 0) (category.amount * 100f / totalExpense) else 0f
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Chấm màu
@@ -373,5 +434,98 @@ private fun configurePieChart(chart: PieChart, state: DashboardUiState) {
         isRotationEnabled = false
 
         invalidate() // Vẽ lại chart
+    }
+}
+
+
+// =============================================
+// DIALOG - Hiển thị lịch sử giao dịch theo danh mục
+// =============================================
+@Composable
+private fun TransactionHistoryDialog(
+    category: SpendingCategory,
+    transactions: List<Transaction>,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(Color(AndroidColor.parseColor(category.colorHex)))
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Lịch sử: ${category.name}",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                if (transactions.isEmpty()) {
+                    Text(
+                        text = "Chưa có giao dịch nào",
+                        color = Color(0xFF9E9E9E),
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                } else {
+                    transactions.forEach { transaction ->
+                        TransactionItem(transaction)
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = Color(0xFFF0F0F0)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Đóng", color = Color(0xFF26A480))
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(16.dp)
+    )
+}
+
+// =============================================
+// COMPOSABLE - 1 dòng giao dịch trong dialog
+// =============================================
+@Composable
+private fun TransactionItem(transaction: Transaction) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = transaction.description,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF212121)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = transaction.date,
+                fontSize = 12.sp,
+                color = Color(0xFF9E9E9E)
+            )
+        }
+        Text(
+            text = formatCurrency(transaction.amount),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFFEF5350)
+        )
     }
 }
