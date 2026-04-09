@@ -1,0 +1,18 @@
+package com.example.mobileapp.data.local
+
+import androidx.room.Database
+import androidx.room.RoomDatabase
+import com.example.mobileapp.data.local.dao.BudgetDao
+import com.example.mobileapp.data.local.dao.CategoryDao
+import com.example.mobileapp.data.local.dao.TransactionDao
+import com.example.mobileapp.data.local.dao.UserDao
+import com.example.mobileapp.data.local.entity.TransactionEntity
+
+
+@Database(entities = [TransactionEntity::class], version = 1, exportSchema = false)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun transactionDao(): TransactionDao
+    abstract fun userDao(): UserDao
+    abstract fun budgetDao(): BudgetDao
+    abstract fun categoryDao(): CategoryDao
+}
