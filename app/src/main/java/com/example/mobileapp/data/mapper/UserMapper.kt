@@ -20,14 +20,14 @@ fun UserEntity.toDomain() = User(
 )
 
 fun UserEntity.toDto() = UserDto(
-    uid = this.id,
+    id = this.id,
     email = this.email,
     displayName = this.displayName,
     createdAt = this.createdAt
 )
 
 fun UserDto.toEntity() = UserEntity(
-    id = this.uid,
+    id = this.id,
     email = this.email,
     displayName = this.displayName,
     createdAt = this.createdAt,

@@ -4,12 +4,13 @@ plugins {
     alias(libs.plugins.google.gms.google.services)
 //    id("com.google.devtools.ksp") version "2.2.10-1.0.25"
     alias(libs.plugins.ksp)
+    id("org.jetbrains.kotlin.android")
 
 }
 
 android {
     namespace = "com.example.mobileapp"
-    compileSdk { version = release(36) { minorApiLevel = 1 } }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.mobileapp"
@@ -31,8 +32,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures { compose = true }
 }
@@ -48,6 +49,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.recyclerview)
     implementation(libs.firebase.database)
+    implementation(libs.androidx.navigation.runtime.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -58,9 +60,27 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("com.google.android.material:material:1.11.0")
 
-// Room
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler") // [QUAN TRỌNG]: Đổi kapt -> ksp
+    // Navigation Compose
+    implementation("androidx.navigation:navigation-compose:2.7.7")
 
+    // ViewModel in Compose
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+
+    // Material Icons Extended (PieChart, AccountCircle, ...)
+    implementation("androidx.compose.material:material-icons-extended")
+
+    // Firebase Firestore KTX
+    implementation("com.google.firebase:firebase-firestore-ktx:25.0.0")
+
+    // Coroutines Play Services (await() cho Firestore Task)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
+    // Room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
+}
+kotlin {
+    jvmToolchain(17)
 }
