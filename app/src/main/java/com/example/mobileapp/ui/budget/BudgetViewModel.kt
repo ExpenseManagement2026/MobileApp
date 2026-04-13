@@ -7,55 +7,59 @@ import androidx.lifecycle.MutableLiveData
 import com.example.mobileapp.data.local.BudgetPreferences
 import com.example.mobileapp.domain.usecase.CheckBudgetUseCase
 
+// Data class để hiển thị từng dòng danh mục
+data class CategoryBudget(
+    val name: String,
+    val spent: Long,
+    val limit: Long,
+    val percent: Int,
+    val status: String,
+    val color: String
+)
+
 class BudgetViewModel(application: Application) : AndroidViewModel(application) {
 
-    // data local
     private val prefs = BudgetPreferences(application)
-
-    // logic
     private val useCase = CheckBudgetUseCase()
 
-    // ===== STATE =====
-
-    private val _budget = MutableLiveData<Long>()
-    val budget: LiveData<Long> = _budget
+    private val _budgetText = MutableLiveData<String>()
+    val budgetText: LiveData<String> = _budgetText
 
     private val _percent = MutableLiveData<Int>()
     val percent: LiveData<Int> = _percent
 
-    private val _remaining = MutableLiveData<Long>()
-    val remaining: LiveData<Long> = _remaining
+    private val _spentText = MutableLiveData<String>()
+    val spentText: LiveData<String> = _spentText
 
-    private val _status = MutableLiveData<String>()
-    val status: LiveData<String> = _status
+    private val _remainingText = MutableLiveData<String>()
+    val remainingText: LiveData<String> = _remainingText
 
-    // 📥 Input:
-    // - totalSpent (tạm thời giả)
-    // 📤 Output:
-    // - cập nhật toàn bộ UI data
-    fun loadBudget(totalSpent: Long) {
+    private val _statusColor = MutableLiveData<String>()
+    val statusColor: LiveData<String> = _statusColor
 
+    // DANH SÁCH DANH MỤC
+    private val _categories = MutableLiveData<List<CategoryBudget>>()
+    val categories: LiveData<List<CategoryBudget>> = _categories
+
+    fun refreshBudgetData(totalSpent: Long) {
         val currentBudget = prefs.getBudget()
+        val currentPercent = useCase.getUsedPercent(totalSpent, currentBudget)
 
-        _budget.value = currentBudget
+        _budgetText.value = useCase.formatCurrency(currentBudget)
+        _percent.value = currentPercent
+        _spentText.value = useCase.formatCurrency(totalSpent)
+        _remainingText.value = useCase.formatCurrency(useCase.getRemaining(currentBudget, totalSpent))
+        _statusColor.value = useCase.getStatusColor(currentPercent)
 
-        val percent = useCase.getUsedPercent(totalSpent, currentBudget)
-        _percent.value = percent
-
-        _remaining.value = useCase.getRemaining(currentBudget, totalSpent)
-
-        _status.value = useCase.getStatus(percent)
+        // TẠO DỮ LIỆU GIẢ CHO DANH MỤC (Sau này sẽ lấy từ Database thật)
+        _categories.value = listOf(
+            CategoryBudget("Ăn uống", 2160000L, 3000000L, 72, "Cảnh báo", "#FFA000"),
+            CategoryBudget("Di chuyển", 900000L, 2000000L, 45, "An toàn", "#00BFA5")
+        )
     }
 
-    // 📥 Input:
-    // - amount (budget mới)
-    // - totalSpent
-    // 📤 Output:
-    // - cập nhật lại UI
-    fun saveBudget(amount: Long, totalSpent: Long) {
-
-        prefs.saveBudget(amount) // lưu
-
-        loadBudget(totalSpent) // load lại
+    fun saveNewBudget(amount: Long, totalSpent: Long) {
+        prefs.saveBudget(amount)
+        refreshBudgetData(totalSpent)
     }
 }
