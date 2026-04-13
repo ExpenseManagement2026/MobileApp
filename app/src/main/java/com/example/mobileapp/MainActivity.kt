@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mobileapp.presentation.dashboard.DashboardScreen
+import com.example.mobileapp.presentation.home.HomeScreen
 import com.example.mobileapp.ui.budget.BudgetScreen
 import com.example.mobileapp.ui.theme.MobileAppTheme
 
@@ -46,7 +47,8 @@ fun MainScreen() {
         NavItem("Dashboard", Icons.Filled.Poll)
     )
 
-    var selectedIndex by remember { mutableIntStateOf(3) }
+    // selectedIndex = 0 để khi mở app nó vào thẳng Trang chủ của bạn kia
+    var selectedIndex by remember { mutableIntStateOf(0) }
     val greenColor = Color(0xFF00BFA5)
 
     Scaffold(
@@ -80,6 +82,7 @@ fun MainScreen() {
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedIndex) {
+                0 -> HomeScreen()   // ĐÃ KẾT NỐI TRANG CHỦ CỦA BẠN KHẢI
                 3 -> BudgetScreen() // PHẦN CỦA BẠN
                 4 -> DashboardScreen() // PHẦN CỦA NHÓM TRƯỞNG
                 else -> PlaceholderScreen(label = navItems[selectedIndex].label)
