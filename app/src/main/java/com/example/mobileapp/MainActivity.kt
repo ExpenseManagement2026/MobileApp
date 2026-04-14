@@ -20,8 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mobileapp.presentation.dashboard.DashboardScreen
 import com.example.mobileapp.presentation.home.HomeScreen
-import com.example.mobileapp.ui.budget.BudgetScreen
-import com.example.mobileapp.ui.theme.MobileAppTheme
+import com.example.mobileapp.presentation.budget.BudgetScreen
+import com.example.mobileapp.presentation.theme.MobileAppTheme
 
 data class NavItem(val label: String, val icon: ImageVector)
 

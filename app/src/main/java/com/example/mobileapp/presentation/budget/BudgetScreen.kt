@@ -1,5 +1,6 @@
-package com.example.mobileapp.ui.budget
+package com.example.mobileapp.presentation.budget
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,8 +8,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -16,7 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,20 +25,30 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun BudgetScreen(
-    viewModel: BudgetViewModel = viewModel(),
-    totalSpent: Long = 8920000L
+    viewModel: BudgetViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val budgetText by viewModel.budgetText.observeAsState("0 đ")
     val spentText by viewModel.spentText.observeAsState("0 đ")
     val remainingText by viewModel.remainingText.observeAsState("0 đ")
     val percent by viewModel.percent.observeAsState(0)
     val categories by viewModel.categories.observeAsState(emptyList())
+    val currentDateText by viewModel.currentDateText.observeAsState("Tháng --/----")
+    val message by viewModel.message.observeAsState()
 
-    val mintColor = Color(0xFF00BFA5)
+    // MÀU XANH CHUẨN CỦA NHÓM (LẤY TỪ HOME)
+    val greenPrimary = Color(0xFF2DC98E)
     val warningColor = Color(0xFFF44336)
 
+    LaunchedEffect(message) {
+        message?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearMessage()
+        }
+    }
+
     LaunchedEffect(Unit) {
-        viewModel.refreshBudgetData(totalSpent)
+        viewModel.refreshBudgetData()
     }
 
     LazyColumn(
@@ -45,28 +56,26 @@ fun BudgetScreen(
             .fillMaxSize()
             .background(Color.White)
     ) {
-        // --- HEADER ---
         item {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(mintColor)
+                    .background(greenPrimary) // Đổi màu Header
                     .padding(24.dp)
             ) {
                 Column {
                     Text("Ngân sách của bạn", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                    Text("Tháng 12/2024", color = Color.White.copy(alpha = 0.8f))
+                    Text(currentDateText, color = Color.White.copy(alpha = 0.8f))
                 }
             }
         }
 
-        // --- CARD TỔNG QUAN ---
         item {
             Card(
                 modifier = Modifier
                     .padding(16.dp)
                     .fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = mintColor),
+                colors = CardDefaults.cardColors(containerColor = greenPrimary), // Đổi màu Card
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
@@ -76,7 +85,7 @@ fun BudgetScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     LinearProgressIndicator(
-                        progress = percent / 100f,
+                        progress = { percent / 100f },
                         modifier = Modifier.fillMaxWidth().height(8.dp),
                         color = if (percent >= 80) warningColor else Color.White,
                         trackColor = Color.White.copy(alpha = 0.3f)
@@ -94,7 +103,6 @@ fun BudgetScreen(
             }
         }
 
-        // --- TIÊU ĐỀ DANH MỤC ---
         item {
             Text(
                 "Ngân sách theo danh mục",
@@ -104,12 +112,10 @@ fun BudgetScreen(
             )
         }
 
-        // --- DANH SÁCH DANH MỤC ---
         items(categories) { category ->
             CategoryBudgetItem(category)
         }
 
-        // --- PHẦN CẬP NHẬT ---
         item {
             var inputAmount by remember { mutableStateOf("") }
             Column(modifier = Modifier.padding(16.dp)) {
@@ -124,11 +130,15 @@ fun BudgetScreen(
                 Button(
                     onClick = {
                         val amount = inputAmount.toLongOrNull() ?: 0L
-                        viewModel.saveNewBudget(amount, totalSpent)
-                        inputAmount = ""
+                        if (amount > 0) {
+                            viewModel.saveNewBudget(amount)
+                            inputAmount = ""
+                        } else {
+                            Toast.makeText(context, "Vui lòng nhập số tiền hợp lệ", Toast.LENGTH_SHORT).show()
+                        }
                     },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = mintColor),
+                    colors = ButtonDefaults.buttonColors(containerColor = greenPrimary), // Đổi màu Nút
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Cập nhật ngân sách")
@@ -172,7 +182,7 @@ fun CategoryBudgetItem(category: CategoryBudget) {
             Spacer(modifier = Modifier.height(8.dp))
             
             LinearProgressIndicator(
-                progress = category.percent / 100f,
+                progress = { category.percent / 100f },
                 modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
                 color = Color(android.graphics.Color.parseColor(category.color)),
                 trackColor = Color.LightGray.copy(alpha = 0.3f)

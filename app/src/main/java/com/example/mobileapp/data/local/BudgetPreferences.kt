@@ -12,16 +12,16 @@ class BudgetPreferences(context: Context) {
         private const val KEY_BUDGET = "key_budget"
     }
 
-    // 📥 Input: amount (số tiền)
-    // 📤 Output: không có (chỉ lưu)
+    // Input: amount (số tiền)
+    // Output: không có (chỉ lưu)
     fun saveBudget(amount: Long) {
         prefs.edit()
             .putLong(KEY_BUDGET, amount) // lưu giá trị
             .apply() // apply = lưu async (nhanh hơn commit)
     }
 
-    // 📥 Input: không có
-    // 📤 Output: budget đã lưu (Long)
+    // Input: không có
+    // Output: budget đã lưu (Long)
     fun getBudget(): Long {
         return prefs.getLong(KEY_BUDGET, 0L) // nếu chưa có → trả về 0
     }
