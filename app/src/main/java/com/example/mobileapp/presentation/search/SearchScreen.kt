@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -25,17 +26,24 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mobileapp.data.di.RepositoryProvider
 import com.example.mobileapp.domain.model.Transaction
+import com.example.mobileapp.domain.usecase.search.FilterType
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
 // ── Màn hình chính ───────────────────────────────────────────────────
 @Composable
-fun SearchScreen(navController: NavController,
-                 viewModel: SearchViewModel)
-{
+fun SearchScreen(
+    viewModel: SearchViewModel = viewModel(
+        factory = SearchViewModel.Factory(
+            repository = RepositoryProvider.provideTransactionRepository(LocalContext.current),
+            filterTransactionsUseCase = RepositoryProvider.filterTransactionsUseCase
+        )
+    )
+) {
     val transactions by viewModel.uiState.collectAsState()
     val currentFilter by viewModel.currentFilterState.collectAsState()
     val searchQuery by viewModel.searchQueryState.collectAsState()
@@ -221,10 +229,10 @@ private fun TransactionList(
 // ── Item giao dịch ───────────────────────────────────────────────────
 @Composable
 private fun TransactionItem(transaction: Transaction) {
-    val isIncome = transaction.type == "INCOME"
+    val isIncome = transaction.type.name == "INCOME"
     val amountColor = if (isIncome) Color(0xFF2ECC71) else Color(0xFFF44336)
     val iconBg = if (isIncome) Color(0xFF2ECC71).copy(alpha = 0.12f)
-                 else Color(0xFFF44336).copy(alpha = 0.12f)
+    else Color(0xFFF44336).copy(alpha = 0.12f)
     val amountPrefix = if (isIncome) "+ " else "- "
 
     val formattedAmount = remember(transaction.amount) {
@@ -233,9 +241,9 @@ private fun TransactionItem(transaction: Transaction) {
         "${amountPrefix}${formatter.format(transaction.amount)} đ"
     }
 
-    val formattedDate = remember(transaction.dateMillis) {
+    val formattedDate = remember(transaction.date) {
         SimpleDateFormat("dd 'thg' M, HH:mm", Locale("vi"))
-            .format(Date(transaction.dateMillis))
+            .format(Date(transaction.date))
     }
 
     Card(

@@ -296,9 +296,10 @@ fun DashboardScreen(
     // DIALOG - Hiển thị lịch sử chi tiêu khi click vào danh mục
     // =============================================
     selectedCategory?.let { category ->
+        val transactions by viewModel.getTransactionsByCategoryFlow(category.name).collectAsState(initial = emptyList())
         TransactionHistoryDialog(
             category = category,
-            transactions = viewModel.getTransactionsByCategory(category.name),
+            transactions = transactions,
             onDismiss = { selectedCategory = null }
         )
     }
