@@ -8,10 +8,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.room.Room
 import com.example.mobileapp.data.local.AppDatabase
-import com.example.mobileapp.data.repositoryimpl.TransactionRepositoryImpl
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
-import com.google.firebase.firestore.ktx.firestore
 
 class MainActivity : ComponentActivity() {
 
