@@ -30,13 +30,16 @@ data class SpendingCategory(
 // =============================================
 data class DashboardUiState(
     val isLoading: Boolean = true,
+    val error: String? = null,
     val totalIncome: Long = 0L,
     val totalExpense: Long = 0L,
+    val balance: Long = 0L,
     val pieEntries: List<PieEntry> = emptyList(),
     val pieColors: List<Int> = emptyList(),
     val topCategories: List<SpendingCategory> = emptyList(),
     val allCategories: List<SpendingCategory> = emptyList(),
-    val recentTransactions: List<Transaction> = emptyList()
+    val recentTransactions: List<Transaction> = emptyList(),
+    val currentMonth: String = ""
 )
 
 // Bảng màu cho các danh mục
@@ -63,13 +66,24 @@ class DashboardViewModel(
 
     /**
      * Observe thống kê tháng hiện tại từ Room, tự động cập nhật UI khi DB thay đổi
+     * Sử dụng combine để merge 2 Flow thành 1, đảm bảo data consistency
      */
     private fun observeDashboardData() {
         val (startDate, endDate) = getCurrentMonthRange()
+        val currentMonth = getCurrentMonthLabel()
 
         viewModelScope.launch {
             try {
-                repository.getStatistics(startDate, endDate).collectLatest { stats ->
+                // Combine statistics và transactions thành 1 Flow
+                kotlinx.coroutines.flow.combine(
+                    repository.getStatistics(startDate, endDate),
+                    repository.getAllTransactions()
+                ) { stats, allTransactions ->
+                    // Filter transactions trong tháng hiện tại
+                    val monthTransactions = allTransactions.filter { 
+                        it.date in startDate..endDate 
+                    }
+
                     val coloredCategories = stats.categoryBreakdown.mapIndexed { index, cat ->
                         SpendingCategory(
                             name = cat.category,
@@ -93,49 +107,58 @@ class DashboardViewModel(
                         android.graphics.Color.parseColor(it.colorHex)
                     }
 
-                    _uiState.value = DashboardUiState(
+                    DashboardUiState(
                         isLoading = false,
+                        error = null,
                         totalIncome = stats.totalIncome,
                         totalExpense = stats.totalExpense,
+                        balance = stats.balance,
                         pieEntries = pieEntries,
                         pieColors = pieColors,
                         topCategories = coloredCategories.take(3),
-                        allCategories = coloredCategories
+                        allCategories = coloredCategories,
+                        recentTransactions = monthTransactions.take(10),
+                        currentMonth = currentMonth
                     )
+                }.collectLatest { newState ->
+                    _uiState.value = newState
                 }
             } catch (e: Exception) {
-                // Xử lý lỗi, hiển thị empty state
+                // Xử lý lỗi, hiển thị error state
                 _uiState.value = DashboardUiState(
                     isLoading = false,
+                    error = e.message ?: "Lỗi không xác định",
                     totalIncome = 0L,
                     totalExpense = 0L,
+                    balance = 0L,
                     pieEntries = emptyList(),
                     pieColors = emptyList(),
                     topCategories = emptyList(),
-                    allCategories = emptyList()
+                    allCategories = emptyList(),
+                    recentTransactions = emptyList(),
+                    currentMonth = currentMonth
                 )
-            }
-        }
-
-        // Observe danh sách giao dịch gần đây
-        viewModelScope.launch {
-            try {
-                repository.getAllTransactions().collectLatest { transactions ->
-                    _uiState.value = _uiState.value.copy(
-                        recentTransactions = transactions.take(10)
-                    )
-                }
-            } catch (e: Exception) {
-                // Ignore error for recent transactions
             }
         }
     }
 
     /**
-     * Lấy giao dịch theo danh mục (từ danh sách đã load)
+     * Lấy giao dịch theo danh mục (realtime từ state)
      */
     fun getTransactionsByCategory(categoryName: String): List<Transaction> {
-        return _uiState.value.recentTransactions.filter { it.category == categoryName }
+        return _uiState.value.recentTransactions.filter { 
+            it.category == categoryName && it.type == TransactionType.EXPENSE
+        }
+    }
+
+    /**
+     * Lấy label tháng hiện tại (VD: "Tháng 4/2024")
+     */
+    private fun getCurrentMonthLabel(): String {
+        val cal = Calendar.getInstance()
+        val month = cal.get(Calendar.MONTH) + 1
+        val year = cal.get(Calendar.YEAR)
+        return "Tháng $month/$year"
     }
 
     /**

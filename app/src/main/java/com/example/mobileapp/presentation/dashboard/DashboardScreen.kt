@@ -79,7 +79,7 @@ fun DashboardScreen(
         ) {
             Column {
                 Text(
-                    text = "Tháng 4/2024",
+                    text = uiState.currentMonth.ifEmpty { "Tháng 4/2024" },
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp
@@ -93,15 +93,31 @@ fun DashboardScreen(
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Tổng chi tiêu tháng này", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
                         Spacer(modifier = Modifier.height(4.dp))
-                        if (uiState.isLoading) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                        } else {
-                            Text(
-                                text = formatCurrency(uiState.totalExpense),
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 28.sp
-                            )
+                        when {
+                            uiState.isLoading -> {
+                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                            }
+                            uiState.error != null -> {
+                                Text(
+                                    text = "Lỗi: ${uiState.error}",
+                                    color = Color.White,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            else -> {
+                                Text(
+                                    text = formatCurrency(uiState.totalExpense),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 28.sp
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Số dư: ${formatCurrency(uiState.balance)}",
+                                    color = if (uiState.balance >= 0) Color.White else Color(0xFFFFCDD2),
+                                    fontSize = 14.sp
+                                )
+                            }
                         }
                     }
                 }
