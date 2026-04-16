@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mobileapp.presentation.scan.ReceiptScanScreen
 
 private val GreenColor = Color(0xFF2DC98E)
 private val RedColor   = Color(0xFFFF7676)
@@ -36,6 +39,7 @@ fun AddTransactionScreen(
     onSaved: () -> Unit = {},
 ) {
     val state by vm.state.collectAsState()
+    var showScanScreen by remember { mutableStateOf(false) }
 
     // Reset state khi màn hình được mở (composition starts)
     LaunchedEffect(Unit) {
@@ -50,6 +54,24 @@ fun AddTransactionScreen(
         }
     }
 
+    // Hiển thị màn hình scan nếu được yêu cầu
+    if (showScanScreen) {
+        ReceiptScanScreen(
+            onNavigateBack = { showScanScreen = false },
+            onScanComplete = { result ->
+                // Điền thông tin từ scan vào form
+                result.totalAmount?.let { amount ->
+                    vm.setAmount(amount.toLong().toString())
+                }
+                result.merchantName?.let { merchant ->
+                    vm.setNote(merchant)
+                }
+                showScanScreen = false
+            }
+        )
+        return
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -57,12 +79,41 @@ fun AddTransactionScreen(
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Tiêu đề
-        Text(
-            text = "Thêm giao dịch",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        // Tiêu đề và nút scan
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Thêm giao dịch",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            
+            // Nút scan hóa đơn
+            OutlinedButton(
+                onClick = { showScanScreen = true },
+                modifier = Modifier.height(40.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = if (state.isExpense) RedColor else GreenColor
+                ),
+                border = ButtonDefaults.outlinedButtonBorder.copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(
+                        if (state.isExpense) RedColor else GreenColor
+                    )
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = "Scan hóa đơn",
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Scan", fontSize = 14.sp)
+            }
+        }
 
         // Toggle Chi tiêu / Thu nhập
         TypeToggle(
