@@ -18,9 +18,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.mobileapp.presentation.add.AddTransactionScreen
+import com.example.mobileapp.presentation.budget.BudgetScreen
 import com.example.mobileapp.presentation.dashboard.DashboardScreen
 import com.example.mobileapp.presentation.home.HomeScreen
-import com.example.mobileapp.presentation.budget.BudgetScreen
 import com.example.mobileapp.presentation.search.SearchScreen
 import com.example.mobileapp.presentation.theme.MobileAppTheme
 
@@ -41,16 +42,15 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     val navItems = listOf(
-        NavItem("Home", Icons.Filled.Home),
-        NavItem("Search", Icons.Filled.Search),
-        NavItem("Add", Icons.Filled.Add),
-        NavItem("Budget", Icons.Filled.AccountBalance),
-        NavItem("Dashboard", Icons.Filled.Poll)
+        NavItem("Home",      Icons.Filled.Home),
+        NavItem("Search",    Icons.Filled.Search),
+        NavItem("Add",       Icons.Filled.Add),
+        NavItem("Budget",    Icons.Filled.AccountBalance),
+        NavItem("Dashboard", Icons.Filled.Poll),
     )
 
-    // selectedIndex = 0 để khi mở app nó vào thẳng Trang chủ của bạn kia
     var selectedIndex by remember { mutableIntStateOf(0) }
-    val greenColor = Color(0xFF00BFA5)
+    val greenColor = Color(0xFF26A480)
 
     Scaffold(
         bottomBar = {
@@ -61,20 +61,31 @@ fun MainScreen() {
                             selected = selectedIndex == index,
                             onClick = { selectedIndex = index },
                             icon = {
-                                Box(modifier = Modifier.size(52.dp).clip(CircleShape).background(greenColor), contentAlignment = Alignment.Center) {
-                                    Icon(imageVector = item.icon, contentDescription = item.label, tint = Color.White, modifier = Modifier.size(28.dp))
+                                Box(
+                                    modifier = Modifier.size(52.dp).clip(CircleShape).background(greenColor),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(item.icon, contentDescription = item.label, tint = Color.White, modifier = Modifier.size(28.dp))
                                 }
                             },
                             label = { Text(item.label, fontSize = 10.sp) },
-                            colors = NavigationBarItemDefaults.colors(selectedIconColor = greenColor, selectedTextColor = greenColor, indicatorColor = Color.Transparent, unselectedIconColor = Color(0xFF9E9E9E), unselectedTextColor = Color(0xFF9E9E9E))
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = greenColor, selectedTextColor = greenColor,
+                                indicatorColor = Color.Transparent,
+                                unselectedIconColor = Color(0xFF9E9E9E), unselectedTextColor = Color(0xFF9E9E9E)
+                            )
                         )
                     } else {
                         NavigationBarItem(
                             selected = selectedIndex == index,
                             onClick = { selectedIndex = index },
-                            icon = { Icon(imageVector = item.icon, contentDescription = item.label) },
+                            icon = { Icon(item.icon, contentDescription = item.label) },
                             label = { Text(item.label, fontSize = 10.sp) },
-                            colors = NavigationBarItemDefaults.colors(selectedIconColor = greenColor, selectedTextColor = greenColor, indicatorColor = greenColor.copy(alpha = 0.12f), unselectedIconColor = Color(0xFF9E9E9E), unselectedTextColor = Color(0xFF9E9E9E))
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = greenColor, selectedTextColor = greenColor,
+                                indicatorColor = greenColor.copy(alpha = 0.12f),
+                                unselectedIconColor = Color(0xFF9E9E9E), unselectedTextColor = Color(0xFF9E9E9E)
+                            )
                         )
                     }
                 }
@@ -83,10 +94,11 @@ fun MainScreen() {
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedIndex) {
-                0 -> HomeScreen()   // ĐÃ KẾT NỐI TRANG CHỦ CỦA BẠN KHẢI
-                1 -> SearchScreen() // PHẦN CỦA BẠN
-                3 -> BudgetScreen() // PHẦN CỦA BẠN
-                4 -> DashboardScreen() // PHẦN CỦA NHÓM TRƯỞNG
+                0 -> HomeScreen()
+                1 -> SearchScreen()
+                2 -> AddTransactionScreen(onSaved = { selectedIndex = 0 })
+                3 -> BudgetScreen()
+                4 -> DashboardScreen()
                 else -> PlaceholderScreen(label = navItems[selectedIndex].label)
             }
         }
@@ -94,11 +106,11 @@ fun MainScreen() {
 }
 
 @Composable
-fun PlaceholderScreen(label: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+fun PlaceholderScreen(label: String, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = label, fontSize = 22.sp, color = Color.Gray)
-            Text(text = "Đang kết nối dữ liệu từ đồng đội...", fontSize = 14.sp, color = Color.LightGray)
+            Text(text = "Đang phát triển...", fontSize = 14.sp, color = Color.LightGray)
         }
     }
 }
