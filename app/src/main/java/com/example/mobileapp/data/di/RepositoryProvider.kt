@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.mobileapp.data.local.database.AppDatabase
 import com.example.mobileapp.data.repository.TransactionRepositoryImpl
 import com.example.mobileapp.domain.repository.TransactionRepository
+import com.example.mobileapp.domain.usecase.search.FilterTransactionsUseCase
 
 /**
  * =============================================
@@ -44,4 +45,5 @@ object RepositoryProvider {
         transactionRepository = null
         AppDatabase.closeDatabase()
     }
+    val filterTransactionsUseCase by lazy { FilterTransactionsUseCase() }
 }

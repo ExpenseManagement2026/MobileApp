@@ -16,16 +16,16 @@ class CheckBudgetUseCase {
     fun getStatus(percent: Int): String {
         return when {
             percent >= 100 -> "Vượt hạn mức"
-            percent >= 80 -> "Cảnh báo"
-            else -> "An toàn"
+            percent >= 80  -> "Cảnh báo"
+            else           -> "An toàn"
         }
     }
 
     fun getStatusColor(percent: Int): String {
         return when {
-            percent >= 100 -> "#F44336" // Đỏ
-            percent >= 80 -> "#FFA000"  // Cam
-            else -> "#2DC98E"           // ĐÃ ĐỔI SANG XANH CỦA ĐỒNG ĐỘI
+            percent >= 100 -> "#F44336"
+            percent >= 80  -> "#FFA000"
+            else           -> "#2DC98E"
         }
     }
 

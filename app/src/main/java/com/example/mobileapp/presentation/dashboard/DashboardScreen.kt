@@ -132,9 +132,10 @@ fun DashboardScreen(
     }
 
     selectedCategory?.let { category ->
+        val transactions by viewModel.getTransactionsByCategoryFlow(category.name).collectAsState(initial = emptyList())
         TransactionHistoryDialog(
             category = category,
-            transactions = viewModel.getTransactionsByCategory(category.name),
+            transactions = transactions,
             onDismiss = { selectedCategory = null }
         )
     }

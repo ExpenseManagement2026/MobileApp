@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">MobileApp</string>
-<<<<<<< HEAD
 
     <!-- Navigation -->
     <string name="nav_home">Trang chủ</string>
@@ -37,6 +36,3 @@
     <string name="home_label">Trang chủ</string>
     <string name="search_label">Tìm kiếm</string>
 </resources>
-=======
-</resources>
->>>>>>> origin/feature/dashboard
