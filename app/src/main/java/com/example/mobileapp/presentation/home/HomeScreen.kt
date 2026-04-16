@@ -8,15 +8,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -27,14 +33,29 @@ import com.example.mobileapp.presentation.home.model.toVndString
 private val GreenPrimary = Color(0xFF2DC98E)
 
 @Composable
-fun HomeScreen(vm: HomeViewModel = viewModel()) {
+fun HomeScreen(vm: HomeViewModel = viewModel(
+    factory = HomeViewModel.Factory(
+        LocalContext.current.applicationContext as android.app.Application
+    )
+)) {
     val state by vm.state.collectAsState()
     HomeContent(state = state)
 }
 
 @Composable
 fun HomeContent(state: HomeState) {
-    // Đã loại bỏ Scaffold và BottomNavBar ở đây để dùng chung với MainActivity
+    if (state.isLoading) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = GreenPrimary)
+        }
+        return
+    }
+    if (state.error != null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(state.error, color = Color.Red)
+        }
+        return
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -68,12 +89,7 @@ fun HomeContent(state: HomeState) {
 }
 
 @Composable
-fun BalanceHeader(
-    greeting: String,
-    balance: Long,
-    income: Long,
-    expense: Long,
-) {
+fun BalanceHeader(greeting: String, balance: Long, income: Long, expense: Long) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -92,18 +108,8 @@ fun BalanceHeader(
             )
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SummaryCard(
-                    icon = "⬆",
-                    label = "Thu nhập",
-                    amount = income.toVndString(),
-                    modifier = Modifier.weight(1f),
-                )
-                SummaryCard(
-                    icon = "⬇",
-                    label = "Chi tiêu",
-                    amount = expense.toVndString(),
-                    modifier = Modifier.weight(1f),
-                )
+                SummaryCard("⬆", "Thu nhập", income.toVndString(), Modifier.weight(1f))
+                SummaryCard("⬇", "Chi tiêu", expense.toVndString(), Modifier.weight(1f))
             }
         }
     }
@@ -135,11 +141,7 @@ fun SpendingChart(data: List<Float>) {
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
         Text("Chi tiêu tháng này", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Spacer(Modifier.height(12.dp))
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-        ) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(160.dp)) {
             drawLineChart(data)
         }
     }
@@ -165,13 +167,10 @@ fun DrawScope.drawLineChart(data: List<Float>) {
         lineTo(points.last().x, chartH)
         close()
     }
-    drawPath(
-        fillPath,
-        brush = Brush.verticalGradient(
-            colors = listOf(GreenPrimary.copy(alpha = 0.35f), Color.Transparent),
-            startY = 0f, endY = chartH,
-        )
-    )
+    drawPath(fillPath, brush = Brush.verticalGradient(
+        colors = listOf(GreenPrimary.copy(alpha = 0.35f), Color.Transparent),
+        startY = 0f, endY = chartH,
+    ))
 
     val linePath = Path().apply {
         moveTo(points.first().x, points.first().y)
@@ -183,24 +182,18 @@ fun DrawScope.drawLineChart(data: List<Float>) {
         drawCircle(color = GreenPrimary, radius = 5.dp.toPx(), center = pt)
         drawCircle(color = Color.White, radius = 3.dp.toPx(), center = pt)
     }
-
     drawLine(Color.LightGray, Offset(padLeft, chartH), Offset(size.width, chartH), strokeWidth = 1.dp.toPx())
 }
 
 @Composable
 fun TransactionItem(transaction: Transaction) {
-    val amountColor = if (transaction.amount < 0) Color.Red else Color(0xFF2DC98E)
+    val amountColor = if (transaction.amount < 0) Color.Red else GreenPrimary
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFF5F5F5)),
+            modifier = Modifier.size(44.dp).clip(CircleShape).background(Color(0xFFF5F5F5)),
             contentAlignment = Alignment.Center,
         ) {
             Text(transaction.icon, fontSize = 20.sp)
@@ -215,6 +208,27 @@ fun TransactionItem(transaction: Transaction) {
             color = amountColor,
             fontWeight = FontWeight.SemiBold,
             fontSize = 15.sp,
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+private fun HomeContentPreview() {
+    MaterialTheme {
+        HomeContent(
+            state = HomeState(
+                greeting = "Xin chào,",
+                totalBalance = 28_450_000L,
+                totalIncome = 15_200_000L,
+                totalExpense = 6_750_000L,
+                chartData = listOf(100f, 180f, 220f, 310f, 290f, 340f, 380f, 420f),
+                recentTransactions = listOf(
+                    Transaction("tx1", "🍜", "Ăn trưa", "Ăn uống", -85_000),
+                    Transaction("tx2", "🚕", "Grab về nhà", "Di chuyển", -45_000),
+                    Transaction("tx3", "🛒", "Siêu thị", "Mua sắm", -120_000),
+                ),
+            )
         )
     }
 }

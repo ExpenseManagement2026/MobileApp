@@ -1,145 +1,121 @@
 package com.example.mobileapp.presentation.dashboard
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.github.mikephil.charting.data.PieEntry
+import com.example.mobileapp.data.di.RepositoryProvider
+import com.example.mobileapp.domain.model.Transaction
 import com.example.mobileapp.domain.repository.TransactionRepository
+import com.github.mikephil.charting.data.PieEntry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 
-// =============================================
-// DATA MODEL - Đại diện cho 1 hạng mục chi tiêu
-// =============================================
 data class SpendingCategory(
-    val name: String,       // Tên hạng mục
-    val amount: Long,       // Số tiền (VND)
-    val colorHex: String    // Màu hiển thị (hex string)
-)
-
-// =============================================
-// DATA MODEL - Đại diện cho 1 giao dịch chi tiêu
-// =============================================
-data class Transaction(
-    val id: String,
-    val categoryName: String,
-    val description: String,
+    val name: String,
     val amount: Long,
-    val date: String  // Format: "dd/MM/yyyy"
+    val colorHex: String,
 )
 
-// =============================================
-// UI STATE - Trạng thái toàn bộ màn hình Dashboard
-// Đây là "single source of truth" mà Fragment sẽ observe
-// =============================================
 data class DashboardUiState(
     val isLoading: Boolean = true,
-    val totalIncome: Long = 0L,         // Tổng thu
-    val totalExpense: Long = 0L,        // Tổng chi
-    val pieEntries: List<PieEntry> = emptyList(),           // Dữ liệu cho PieChart
-    val pieColors: List<Int> = emptyList(),                 // Màu tương ứng từng slice
-    val topCategories: List<SpendingCategory> = emptyList(), // Top 3 hạng mục chi nhiều nhất
-    val allCategories: List<SpendingCategory> = emptyList()  // Toàn bộ danh mục
+    val totalIncome: Long = 0L,
+    val totalExpense: Long = 0L,
+    val pieEntries: List<PieEntry> = emptyList(),
+    val pieColors: List<Int> = emptyList(),
+    val topCategories: List<SpendingCategory> = emptyList(),
+    val allCategories: List<SpendingCategory> = emptyList(),
+    val recentTransactions: List<Transaction> = emptyList(),
 )
 
-// =============================================
-// VIEWMODEL - Tầng xử lý logic UI (MVVM Layer)
-// Không giữ reference đến View/Fragment
-// =============================================
+private val CATEGORY_COLORS = listOf(
+    "#EF5350", "#5C6BC0", "#FFA726", "#26A69A",
+    "#AB47BC", "#EC407A", "#42A5F5", "#66BB6A",
+    "#FF7043", "#8D6E63"
+)
+
 class DashboardViewModel(
-    private val repository: TransactionRepository
-) : ViewModel() {
+    application: Application,
+    private val repository: TransactionRepository,
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
-        loadDashboardData()
+        observeDashboardData()
     }
 
-    /**
-     * Lấy lịch sử giao dịch theo danh mục (Real time từ DB)
-     */
-    fun getTransactionsByCategoryFlow(categoryName: String): Flow<List<Transaction>> {
-        return repository.getTransactionsByCategory(categoryName).map { list ->
-            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-            list.map { trans ->
-                Transaction(
-                    id = trans.id.toString(),
-                    categoryName = trans.category,
-                    description = trans.title,
-                    amount = trans.amount,
-                    date = sdf.format(Date(trans.date))
-                )
-            }
-        }
-    }
+    private fun observeDashboardData() {
+        val (startDate, endDate) = getCurrentMonthRange()
 
-    fun loadDashboardData() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-
-            val calendar = Calendar.getInstance()
-            calendar.set(Calendar.DAY_OF_MONTH, 1)
-            val startDate = calendar.timeInMillis
-            calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-            val endDate = calendar.timeInMillis
-
-            repository.getStatistics(startDate, endDate).collect { stats ->
-                val totalExpense = stats.totalExpense
-                val totalIncome = stats.totalIncome
-                // Bảng màu chuẩn
-                val colors = listOf("#EF5350", "#5C6BC0", "#FFA726", "#26A69A", "#AB47BC", "#8D6E63", "#26C6DA")
-
-                val categories = stats.categoryBreakdown.mapIndexed { index, cat ->
-                    SpendingCategory(
-                        name = cat.category,
-                        amount = cat.amount,
-                        colorHex = colors[index % colors.size]
-                    )
-                }.sortedByDescending { it.amount }
-
-                val pieEntries = categories.map { cat ->
-                    PieEntry(
-                        if (totalExpense > 0) (cat.amount.toFloat() / totalExpense.toFloat()) * 100f else 0f,
-                        cat.name
+            try {
+                repository.getStatistics(startDate, endDate).collectLatest { stats ->
+                    val coloredCategories = stats.categoryBreakdown.mapIndexed { index, cat ->
+                        SpendingCategory(
+                            name = cat.category,
+                            amount = cat.amount,
+                            colorHex = CATEGORY_COLORS[index % CATEGORY_COLORS.size]
+                        )
+                    }
+                    val pieEntries = coloredCategories.map { cat ->
+                        val percent = if (stats.totalExpense > 0)
+                            (cat.amount.toFloat() / stats.totalExpense.toFloat()) * 100f
+                        else 0f
+                        PieEntry(percent, cat.name)
+                    }
+                    val pieColors = coloredCategories.map {
+                        android.graphics.Color.parseColor(it.colorHex)
+                    }
+                    _uiState.value = DashboardUiState(
+                        isLoading = false,
+                        totalIncome = stats.totalIncome,
+                        totalExpense = stats.totalExpense,
+                        pieEntries = pieEntries,
+                        pieColors = pieColors,
+                        topCategories = coloredCategories.take(3),
+                        allCategories = coloredCategories,
                     )
                 }
-
-                val pieColors = categories.map {
-                    android.graphics.Color.parseColor(it.colorHex)
-                }
-
-                _uiState.value = DashboardUiState(
-                    isLoading = false,
-                    totalIncome = totalIncome,
-                    totalExpense = totalExpense,
-                    pieEntries = pieEntries,
-                    pieColors = pieColors,
-                    topCategories = categories.take(3),
-                    allCategories = categories
-                )
+            } catch (e: Exception) {
+                _uiState.value = DashboardUiState(isLoading = false)
             }
+        }
+
+        viewModelScope.launch {
+            try {
+                repository.getAllTransactions().collectLatest { transactions ->
+                    _uiState.value = _uiState.value.copy(recentTransactions = transactions.take(10))
+                }
+            } catch (e: Exception) { /* ignore */ }
         }
     }
 
-    // Builder định nghĩa Factory để cung cấp Repository cho ViewModel này
-    class Factory(private val repository: TransactionRepository) : ViewModelProvider.Factory {
+    fun getTransactionsByCategory(categoryName: String): List<Transaction> {
+        return _uiState.value.recentTransactions.filter { it.category == categoryName }
+    }
+
+    private fun getCurrentMonthRange(): Pair<Long, Long> {
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+        val startDate = cal.timeInMillis
+        cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
+        cal.set(Calendar.HOUR_OF_DAY, 23); cal.set(Calendar.MINUTE, 59); cal.set(Calendar.SECOND, 59)
+        return Pair(startDate, cal.timeInMillis)
+    }
+
+    class Factory(private val application: Application) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
-                return DashboardViewModel(repository) as T
-            }
-            throw IllegalArgumentException("Unknown ViewModel class")
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            val repository = RepositoryProvider.provideTransactionRepository(application)
+            return DashboardViewModel(application, repository) as T
         }
     }
 }
-

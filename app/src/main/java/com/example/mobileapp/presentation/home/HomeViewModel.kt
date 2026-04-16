@@ -1,91 +1,149 @@
 package com.example.mobileapp.presentation.home
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.mobileapp.data.di.RepositoryProvider
+import com.example.mobileapp.domain.model.TransactionType
+import com.example.mobileapp.domain.repository.TransactionRepository
 import com.example.mobileapp.presentation.home.model.HomeState
 import com.example.mobileapp.presentation.home.model.Transaction
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
-/**
- * HomeViewModel đóng vai trò là "bộ não" quản lý dữ liệu cho màn hình HomeScreen.
- * Nó kế thừa từ ViewModel để giữ lại dữ liệu ngay cả khi màn hình bị xoay.
- */
-class HomeViewModel : ViewModel() {
+class HomeViewModel(
+    application: Application,
+    private val repository: TransactionRepository,
+) : AndroidViewModel(application) {
 
-    // _state là biến nội bộ dùng để cập nhật dữ liệu (MutableStateFlow)
-    private val _state = MutableStateFlow(HomeState())
-    
-    // state là biến công khai chỉ cho phép đọc để UI quan sát (StateFlow)
+    private val _state = MutableStateFlow(HomeState(isLoading = true))
     val state: StateFlow<HomeState> = _state.asStateFlow()
 
-    // Khối init sẽ chạy ngay khi ViewModel được khởi tạo
     init {
-        getTransactions()
+        observeData()
     }
 
-    /**
-     * Hàm lấy danh sách giao dịch từ nguồn dữ liệu (Database hoặc API).
-     */
-    fun getTransactions() {
-        // viewModelScope giúp chạy tác vụ này ở background, không làm treo máy
+    private fun observeData() {
+        val (startDate, endDate) = currentMonthRange()
+
         viewModelScope.launch {
-            
-            // Bước 1: Bật trạng thái "Đang tải" (isLoading = true) để UI hiện vòng xoay loading
-            _state.update { it.copy(isLoading = true, error = null) }
-
             try {
-                // Giả lập thời gian chờ load dữ liệu từ Database (ví dụ 1 giây)
-                delay(1000) 
+                combine(
+                    repository.getAllTransactions(),
+                    repository.getStatistics(startDate, endDate),
+                ) { transactions, stats ->
+                    // Map domain.Transaction → home.model.Transaction (dùng emoji theo category)
+                    val recent = transactions.take(10).map { tx ->
+                        Transaction(
+                            id = tx.id.toString(),
+                            icon = categoryIcon(tx.category),
+                            title = tx.title,
+                            category = tx.category,
+                            amount = if (tx.type == TransactionType.EXPENSE) -tx.amount else tx.amount,
+                        )
+                    }
 
-                // Bước 2: Chuẩn bị dữ liệu thực tế (Sau này thay chỗ này bằng cách gọi Repository)
-                val realDataFromSource = listOf(
-                    Transaction("1", "🍜", "Ăn trưa", "Ăn uống", -85000),
-                    Transaction("2", "🚕", "Grab về nhà", "Di chuyển", -45000),
-                    Transaction("3", "🛒", "Siêu thị", "Mua sắm", -120000),
-                    Transaction("4", "💊", "Thuốc", "Sức khỏe", -35000),
-                    Transaction("5", "💰", "Lương tháng", "Thu nhập", 15200000),
-                    Transaction("6", "☕", "Cà phê", "Giải trí", -30000),
-                    Transaction("7", "⚡", "Tiền điện", "Hóa đơn", -450000)
-                )
+                    // Tạo chart data: tổng chi theo từng ngày trong tháng (đơn vị nghìn đồng)
+                    val chartData = buildChartData(transactions)
 
-                // Bước 3: Logic tính toán các con số tổng quát
-                // - Lọc các giao dịch dương để tính tổng Thu nhập
-                val income = realDataFromSource.filter { it.amount > 0 }.sumOf { it.amount }
-                
-                // - Lọc các giao dịch âm để tính tổng Chi tiêu (đổi dấu sang dương để hiện số)
-                val expense = realDataFromSource.filter { it.amount < 0 }.sumOf { -it.amount }
-                
-                // - Số dư = Thu nhập - Chi tiêu
-                val balance = income - expense
-
-                // Bước 4: Cập nhật toàn bộ kết quả vào State để UI tự động vẽ lại
-                _state.update { currentState ->
-                    currentState.copy(
-                        isLoading = false, // Tắt loading
-                        totalBalance = balance,
-                        totalIncome = income,
-                        totalExpense = expense,
-                        recentTransactions = realDataFromSource.sortedByDescending { it.id }, // Sắp xếp cái mới nhất lên đầu
-                        chartData = listOf(100f, 150f, 200f, 350f, 250f, 300f, 420f) // Dữ liệu cho biểu đồ
+                    HomeState(
+                        isLoading = false,
+                        greeting = "Xin chào,",
+                        totalBalance = stats.balance,
+                        totalIncome = stats.totalIncome,
+                        totalExpense = stats.totalExpense,
+                        chartData = chartData,
+                        recentTransactions = recent,
                     )
+                }.collectLatest { newState ->
+                    _state.value = newState
                 }
-
             } catch (e: Exception) {
-                // Bước 5: Nếu có lỗi (mất mạng, lỗi DB), thông báo lỗi cho người dùng
-                _state.update { it.copy(isLoading = false, error = "Lỗi tải dữ liệu: ${e.message}") }
+                _state.value = HomeState(isLoading = false, error = "Lỗi tải dữ liệu: ${e.message}")
             }
         }
     }
 
-    /**
-     * Hàm dùng để làm mới dữ liệu khi người dùng kéo màn hình xuống
-     */
     fun refresh() {
-        getTransactions()
+        _state.value = _state.value.copy(isLoading = true)
+        observeData()
+    }
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    /** Tính tổng chi theo ngày trong tháng hiện tại để vẽ biểu đồ */
+    private fun buildChartData(transactions: List<com.example.mobileapp.domain.model.Transaction>): List<Float> {
+        val cal = Calendar.getInstance()
+        val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val dailyExpense = FloatArray(daysInMonth) { 0f }
+
+        val (startDate, _) = currentMonthRange()
+        val startCal = Calendar.getInstance().apply { timeInMillis = startDate }
+
+        transactions
+            .filter { it.type == TransactionType.EXPENSE }
+            .forEach { tx ->
+                val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
+                if (txCal.get(Calendar.MONTH) == startCal.get(Calendar.MONTH) &&
+                    txCal.get(Calendar.YEAR) == startCal.get(Calendar.YEAR)
+                ) {
+                    val day = txCal.get(Calendar.DAY_OF_MONTH) - 1
+                    dailyExpense[day] += tx.amount / 1000f // đơn vị nghìn đồng
+                }
+            }
+
+        // Tích lũy để tạo đường tăng dần
+        for (i in 1 until daysInMonth) {
+            dailyExpense[i] += dailyExpense[i - 1]
+        }
+
+        // Lấy 8 điểm đại diện để vẽ chart
+        val step = daysInMonth / 8
+        return (0 until 8).map { i ->
+            val idx = (i * step).coerceAtMost(daysInMonth - 1)
+            dailyExpense[idx].coerceAtLeast(1f)
+        }
+    }
+
+    private fun currentMonthRange(): Pair<Long, Long> {
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+        val start = cal.timeInMillis
+        cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
+        cal.set(Calendar.HOUR_OF_DAY, 23); cal.set(Calendar.MINUTE, 59); cal.set(Calendar.SECOND, 59)
+        return Pair(start, cal.timeInMillis)
+    }
+
+    private fun categoryIcon(category: String): String = when (category) {
+        "Ăn uống"   -> "🍜"
+        "Di chuyển" -> "🚕"
+        "Mua sắm"   -> "🛒"
+        "Hóa đơn"   -> "⚡"
+        "Giải trí"  -> "🎮"
+        "Sức khỏe"  -> "💊"
+        "Giáo dục"  -> "📚"
+        "Lương"     -> "💰"
+        "Thưởng"    -> "🎁"
+        "Đầu tư"    -> "📈"
+        "Freelance" -> "💻"
+        else        -> "📦"
+    }
+
+    // ─── Factory ─────────────────────────────────────────────────────────────
+
+    class Factory(private val application: Application) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            val repo = RepositoryProvider.provideTransactionRepository(application)
+            return HomeViewModel(application, repo) as T
+        }
     }
 }
