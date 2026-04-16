@@ -1,5 +1,6 @@
 package com.example.mobileapp.presentation.dashboard
 
+import android.app.Application
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.mobileapp.data.di.RepositoryProvider
+import com.example.mobileapp.domain.model.Transaction
 import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.data.PieData
@@ -47,7 +48,7 @@ fun DashboardScreen(
     // viewModel() tự tạo và giữ ViewModel theo lifecycle của Composable
     viewModel: DashboardViewModel = viewModel(
         factory = DashboardViewModel.Factory(
-            repository = RepositoryProvider.provideTransactionRepository(LocalContext.current)
+            application = LocalContext.current.applicationContext as Application
         )
     )) {
     // ---- OBSERVE STATE ----
@@ -509,20 +510,31 @@ private fun TransactionHistoryDialog(
 // =============================================
 @Composable
 private fun TransactionItem(transaction: Transaction) {
+    val dateFormat = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("vi", "VN"))
+    val dateString = dateFormat.format(java.util.Date(transaction.date))
+    
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = transaction.description,
+                text = transaction.title,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color(0xFF212121)
             )
             Spacer(modifier = Modifier.height(4.dp))
+            if (transaction.note.isNotEmpty()) {
+                Text(
+                    text = transaction.note,
+                    fontSize = 11.sp,
+                    color = Color(0xFF757575)
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+            }
             Text(
-                text = transaction.date,
+                text = dateString,
                 fontSize = 12.sp,
                 color = Color(0xFF9E9E9E)
             )
@@ -531,7 +543,10 @@ private fun TransactionItem(transaction: Transaction) {
             text = formatCurrency(transaction.amount),
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xFFEF5350)
+            color = if (transaction.type == com.example.mobileapp.domain.model.TransactionType.EXPENSE) 
+                Color(0xFFEF5350) 
+            else 
+                Color(0xFF26A480)
         )
     }
 }

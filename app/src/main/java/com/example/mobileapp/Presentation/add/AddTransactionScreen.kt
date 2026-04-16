@@ -37,9 +37,17 @@ fun AddTransactionScreen(
 ) {
     val state by vm.state.collectAsState()
 
-    // Khi lưu thành công, gọi callback
+    // Reset state khi màn hình được mở (composition starts)
+    LaunchedEffect(Unit) {
+        vm.resetState()
+    }
+
+    // Khi lưu thành công, gọi callback và đánh dấu đã xử lý
     LaunchedEffect(state.isSaved) {
-        if (state.isSaved) onSaved()
+        if (state.isSaved) {
+            onSaved()
+            vm.markSavedHandled()
+        }
     }
 
     Column(

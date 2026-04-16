@@ -85,9 +85,18 @@ class AddTransactionViewModel(
                         note = s.note,
                     )
                 )
-                _state.value = AddTransactionState(isSaved = true)
+                // Chỉ set isSaved = true, giữ nguyên các field khác
+                _state.value = s.copy(isSaved = true)
             }
         }
+    }
+
+    fun resetState() {
+        _state.value = AddTransactionState()
+    }
+
+    fun markSavedHandled() {
+        _state.value = _state.value.copy(isSaved = false)
     }
 
     class Factory(private val application: Application) : ViewModelProvider.Factory {

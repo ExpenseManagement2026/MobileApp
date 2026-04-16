@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -98,6 +99,10 @@ class DashboardViewModel(
 
     fun getTransactionsByCategory(categoryName: String): List<Transaction> {
         return _uiState.value.recentTransactions.filter { it.category == categoryName }
+    }
+
+    fun getTransactionsByCategoryFlow(categoryName: String) = repository.getAllTransactions().map { transactions ->
+        transactions.filter { it.category == categoryName }
     }
 
     private fun getCurrentMonthRange(): Pair<Long, Long> {
