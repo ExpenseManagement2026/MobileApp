@@ -16,7 +16,7 @@ data class HomeState(
     val totalExpense: Long = 0L,
     val chartData: List<Float> = emptyList(),
     val recentTransactions: List<Transaction> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
 )
 
 /** -85000 → "-85.000 đ" | 15200000 → "15.200.000 đ" */
