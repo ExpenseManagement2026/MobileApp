@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mobileapp.presentation.add.AddTransactionScreen
@@ -23,7 +24,9 @@ import com.example.mobileapp.presentation.budget.BudgetScreen
 import com.example.mobileapp.presentation.dashboard.DashboardScreen
 import com.example.mobileapp.presentation.home.HomeScreen
 import com.example.mobileapp.presentation.search.SearchScreen
+import com.example.mobileapp.presentation.settings.SettingsScreen
 import com.example.mobileapp.presentation.theme.MobileAppTheme
+import com.example.mobileapp.presentation.theme.ThemePreferences
 
 data class NavItem(val label: String, val icon: ImageVector)
 
@@ -32,15 +35,25 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MobileAppTheme {
-                MainScreen()
+            val context = LocalContext.current
+            val themePrefs = remember { ThemePreferences(context) }
+            var isDarkMode by remember { mutableStateOf(themePrefs.isDarkMode()) }
+
+            MobileAppTheme(darkTheme = isDarkMode) {
+                MainScreen(
+                    isDarkMode = isDarkMode,
+                    onThemeChanged = { isDarkMode = it },
+                )
             }
         }
     }
 }
 
 @Composable
-fun MainScreen() {
+fun MainScreen(
+    isDarkMode: Boolean,
+    onThemeChanged: (Boolean) -> Unit,
+) {
     val navItems = listOf(
         NavItem("Home",      Icons.Filled.Home),
         NavItem("Search",    Icons.Filled.Search),
@@ -50,11 +63,23 @@ fun MainScreen() {
     )
 
     var selectedIndex by remember { mutableIntStateOf(0) }
+    var showSettings by remember { mutableStateOf(false) }
     val greenColor = Color(0xFF26A480)
+
+    if (showSettings) {
+        SettingsScreen(
+            onBack = { showSettings = false },
+            onThemeChanged = onThemeChanged,
+        )
+        return
+    }
 
     Scaffold(
         bottomBar = {
-            NavigationBar(containerColor = Color.White, tonalElevation = 8.dp) {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp,
+            ) {
                 navItems.forEachIndexed { index, item ->
                     if (index == 2) {
                         NavigationBarItem(
@@ -94,7 +119,7 @@ fun MainScreen() {
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedIndex) {
-                0 -> HomeScreen()
+                0 -> HomeScreen(onSettingsClick = { showSettings = true })
                 1 -> SearchScreen()
                 2 -> AddTransactionScreen(onSaved = { selectedIndex = 0 })
                 3 -> BudgetScreen()

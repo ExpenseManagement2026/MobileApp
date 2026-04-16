@@ -46,7 +46,7 @@ fun BudgetScreen() {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Header
         item {
@@ -110,7 +110,7 @@ fun BudgetScreen() {
             Card(
                 modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -213,7 +213,7 @@ fun CategoryBudgetItem(category: CategoryBudget) {
 
     Card(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp).fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {

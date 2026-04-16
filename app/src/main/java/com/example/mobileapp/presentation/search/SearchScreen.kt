@@ -51,7 +51,7 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F7FA))
+            .background(MaterialTheme.colorScheme.background)
     ) {
         SearchHeader(transactionCount = transactions.size)
 
@@ -94,13 +94,13 @@ private fun SearchHeader(transactionCount: Int) {
     ) {
         Text(
             text = "Lịch sử giao dịch",
-            color = Color(0xFF1A1A1A),
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold
         )
         Text(
             text = "$transactionCount giao dịch",
-            color = Color(0xFF757575),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
             fontSize = 13.sp
         )
     }
@@ -131,10 +131,10 @@ private fun SearchBar(
         keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
         shape = RoundedCornerShape(14.dp),
         colors = TextFieldDefaults.colors(
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
             focusedIndicatorColor = Color(0xFF2ECC71),
-            unfocusedIndicatorColor = Color(0xFFE0E0E0)
+            unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
         )
     )
 }
@@ -168,7 +168,7 @@ private fun FilterChipRow(
             val bgColor = when {
                 isSelected && item.type == FilterType.EXPENSE -> Color(0xFFF44336)
                 isSelected -> Color(0xFF2ECC71)
-                else -> Color.White
+                else -> MaterialTheme.colorScheme.surface
             }
             val textColor = when {
                 isSelected -> Color.White
@@ -249,7 +249,7 @@ private fun TransactionItem(transaction: Transaction) {
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -278,7 +278,7 @@ private fun TransactionItem(transaction: Transaction) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = transaction.title,
-                    color = Color(0xFF212121),
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
