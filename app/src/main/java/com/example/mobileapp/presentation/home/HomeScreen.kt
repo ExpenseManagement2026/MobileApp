@@ -10,12 +10,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
@@ -29,15 +33,11 @@ import com.example.mobileapp.presentation.home.model.toVndString
 
 private val GreenPrimary = Color(0xFF2DC98E)
 
-// ─── Screen entry point ───────────────────────────────────────────────────────
-
 @Composable
 fun HomeScreen(vm: HomeViewModel = viewModel()) {
     val state by vm.state.collectAsState()
     HomeContent(state = state)
 }
-
-// ─── Content (testable, no ViewModel dependency) ──────────────────────────────
 
 @Composable
 fun HomeContent(state: HomeState) {
@@ -77,8 +77,6 @@ fun HomeContent(state: HomeState) {
         }
     }
 }
-
-// ─── Header ───────────────────────────────────────────────────────────────────
 
 @Composable
 fun BalanceHeader(
@@ -142,8 +140,6 @@ fun SummaryCard(icon: String, label: String, amount: String, modifier: Modifier 
     }
 }
 
-// ─── Chart ────────────────────────────────────────────────────────────────────
-
 @Composable
 fun SpendingChart(data: List<Float>) {
     if (data.isEmpty()) return
@@ -206,8 +202,6 @@ fun DrawScope.drawLineChart(data: List<Float>) {
     drawLine(Color.LightGray, Offset(padLeft, chartH), Offset(size.width, chartH), strokeWidth = 1.dp.toPx())
 }
 
-// ─── Transaction item ─────────────────────────────────────────────────────────
-
 @Composable
 fun TransactionItem(transaction: Transaction) {
     val amountColor = if (transaction.amount < 0) Color.Red else Color(0xFF2DC98E)
@@ -240,26 +234,22 @@ fun TransactionItem(transaction: Transaction) {
     }
 }
 
-// ─── Bottom nav ───────────────────────────────────────────────────────────────
-
-private data class NavItem(val icon: androidx.compose.ui.graphics.vector.ImageVector, val label: String)
-
 @Composable
 fun BottomNavBar(selectedIndex: Int) {
     val items = listOf(
-        NavItem(Icons.Default.Home, "Trang chủ"),
-        NavItem(Icons.Default.Add, "Thêm"),
-        NavItem(Icons.Default.ShowChart, "Báo cáo"),
-        NavItem(Icons.Default.AccountBalanceWallet, "Ngân sách"),
-        NavItem(Icons.Default.Person, "Cá nhân"),
+        Icons.Default.Home to "Trang chủ",
+        Icons.Default.Add to "Thêm",
+        Icons.Default.ShowChart to "Báo cáo",
+        Icons.Default.AccountBalanceWallet to "Ngân sách",
+        Icons.Default.Person to "Cá nhân",
     )
     NavigationBar(containerColor = Color.White, tonalElevation = 8.dp) {
-        items.forEachIndexed { index, item ->
+        items.forEachIndexed { index, (icon, label) ->
             NavigationBarItem(
                 selected = index == selectedIndex,
                 onClick = {},
-                icon = { Icon(item.icon, contentDescription = item.label) },
-                label = { Text(item.label, fontSize = 11.sp) },
+                icon = { Icon(icon, contentDescription = label) },
+                label = { Text(label, fontSize = 11.sp) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = GreenPrimary,
                     selectedTextColor = GreenPrimary,
@@ -269,8 +259,6 @@ fun BottomNavBar(selectedIndex: Int) {
         }
     }
 }
-
-// ─── Preview ──────────────────────────────────────────────────────────────────
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
