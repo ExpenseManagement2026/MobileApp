@@ -15,11 +15,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mobileapp.data.di.RepositoryProvider
 import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.data.PieData
@@ -43,8 +45,11 @@ private fun formatCurrency(amount: Long): String {
 fun DashboardScreen(
     modifier: Modifier = Modifier,
     // viewModel() tự tạo và giữ ViewModel theo lifecycle của Composable
-    viewModel: DashboardViewModel = viewModel()
-) {
+    viewModel: DashboardViewModel = viewModel(
+        factory = DashboardViewModel.Factory(
+            repository = RepositoryProvider.provideTransactionRepository(LocalContext.current)
+        )
+    )) {
     // ---- OBSERVE STATE ----
     // collectAsState() chuyển StateFlow thành State<T> của Compose
     // Mỗi khi uiState thay đổi, Compose tự động recompose lại UI
