@@ -190,7 +190,7 @@ fun DashboardScreen(
                     AndroidView(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(260.dp),
+                            .height(220.dp),
                         factory = { context ->
                             // factory chỉ chạy 1 lần khi tạo View
                             PieChart(context).apply {
@@ -202,6 +202,32 @@ fun DashboardScreen(
                             configurePieChart(chart, uiState)
                         }
                     )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Legend - Chú thích màu cho từng danh mục
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        uiState.allCategories.chunked(2).forEach { rowCategories ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                rowCategories.forEach { category ->
+                                    LegendItem(
+                                        category = category,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                // Fill empty space nếu số lẻ
+                                if (rowCategories.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -416,6 +442,40 @@ private fun CategoryRow(
 }
 
 // =============================================
+// COMPOSABLE - Legend item (chú thích màu)
+// =============================================
+@Composable
+private fun LegendItem(
+    category: SpendingCategory,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Start
+    ) {
+        // Hình vuông màu
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(
+                    color = Color(AndroidColor.parseColor(category.colorHex)),
+                    shape = RoundedCornerShape(2.dp)
+                )
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        // Tên danh mục
+        Text(
+            text = category.name,
+            fontSize = 12.sp,
+            color = Color(0xFF616161),
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+        )
+    }
+}
+
+// =============================================
 // HELPER - Cấu hình PieChart (MPAndroidChart)
 // Tách ra hàm riêng để dùng lại ở factory và update
 // =============================================
@@ -426,7 +486,8 @@ private fun configurePieChart(chart: PieChart, state: DashboardUiState) {
         colors = state.pieColors
         sliceSpace = 3f          // Khoảng cách giữa các slice
         selectionShift = 6f      // Độ nổi khi chọn
-        valueTextSize = 0f       // Ẩn label % trên slice (hiển thị ở list bên dưới)
+        valueTextSize = 0f       // Ẩn % trên slice
+        setDrawValues(false)     // Ẩn hoàn toàn text trên slice
     }
 
     chart.apply {
@@ -440,13 +501,16 @@ private fun configurePieChart(chart: PieChart, state: DashboardUiState) {
 
         // Text ở giữa vòng tròn
         centerText = "${formatCurrency(state.totalExpense)}\nTổng chi tiêu"
-        setCenterTextSize(15f)
+        setCenterTextSize(14f)
         setCenterTextColor(AndroidColor.parseColor("#212121"))
         setCenterTextTypeface(android.graphics.Typeface.DEFAULT_BOLD)
 
-        // Tắt legend mặc định (dùng list bên dưới thay thế)
+        // Tắt legend mặc định (dùng Compose legend bên dưới)
         legend.isEnabled = false
         description.isEnabled = false
+        
+        // Tắt entry labels (tên category trên slice)
+        setDrawEntryLabels(false)
 
         // Hiệu ứng quay khi load
         animateY(1000, Easing.EaseInOutQuad)
