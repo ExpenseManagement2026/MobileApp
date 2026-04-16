@@ -17,12 +17,6 @@
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.MobileApp">
-        </activity>
-
-        <activity
-            android:name=".Presentation.add.AddTransactionActivity"
-            android:exported="true"
-            android:theme="@style/Theme.MobileApp">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

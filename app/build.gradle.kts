@@ -1,7 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+<<<<<<< HEAD
     alias(libs.plugins.kotlin.compose)
+=======
+>>>>>>> origin/feature/dashboard
     alias(libs.plugins.ksp)
 }
 
@@ -23,12 +26,18 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(
+<<<<<<< HEAD
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
+=======
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+>>>>>>> origin/feature/dashboard
             )
         }
     }
     compileOptions {
+<<<<<<< HEAD
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -37,6 +46,19 @@ android {
     }
     buildFeatures {
         compose = true
+=======
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    kotlin {
+        jvmToolchain(11)
+    }
+    buildFeatures { 
+        compose = true 
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.14"
+>>>>>>> origin/feature/dashboard
     }
 }
 
@@ -52,16 +74,24 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
+<<<<<<< HEAD
     implementation(libs.androidx.compose.runtime.livedata)
 
     // MPAndroidChart
     implementation(libs.mpandroidchart)
 
+=======
+    // MPAndroidChart - nhúng vào Compose qua AndroidView
+    implementation(libs.mpandroidchart)
+>>>>>>> origin/feature/dashboard
     // Room Database
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/feature/dashboard
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
