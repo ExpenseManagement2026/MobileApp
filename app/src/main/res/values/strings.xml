@@ -1,3 +1,18 @@
 <resources>
     <string name="app_name">MobileApp</string>
+    <string name="back">Quay lại</string>
+    <string name="add_transaction">Thêm giao dịch</string>
+    <string name="amount">Số tiền</string>
+    <string name="amount_hint">245.000</string>
+    <string name="currency_symbol">đ</string>
+    <string name="expense">Chi tiêu</string>
+    <string name="income">Thu nhập</string>
+    <string name="category">Danh mục</string>
+    <string name="date">Ngày</string>
+    <string name="today_format">Hôm nay, %1$s</string>
+    <string name="nav_home">Trang chủ</string>
+    <string name="nav_add">Thêm</string>
+    <string name="nav_report">Báo cáo</string>
+    <string name="nav_budget">Ngân sách</string>
+    <string name="nav_profile">Cá nhân</string>
 </resources>
