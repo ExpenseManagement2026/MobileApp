@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.mobileapp.presentation.add.AddTransactionScreen
 import com.example.mobileapp.presentation.budget.BudgetScreen
 import com.example.mobileapp.presentation.dashboard.DashboardScreen
 import com.example.mobileapp.presentation.home.HomeScreen
@@ -95,6 +96,7 @@ fun MainScreen() {
             when (selectedIndex) {
                 0 -> HomeScreen()
                 1 -> SearchScreen()
+                2 -> AddTransactionScreen(onSaved = { selectedIndex = 0 })
                 3 -> BudgetScreen()
                 4 -> DashboardScreen()
                 else -> PlaceholderScreen(label = navItems[selectedIndex].label)

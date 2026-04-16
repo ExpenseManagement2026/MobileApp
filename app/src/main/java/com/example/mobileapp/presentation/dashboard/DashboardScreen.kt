@@ -36,12 +36,13 @@ private fun formatCurrency(amount: Long): String {
 @Composable
 fun DashboardScreen(
     modifier: Modifier = Modifier,
-    viewModel: DashboardViewModel = viewModel(
+) {
+    val context = LocalContext.current
+    val viewModel: DashboardViewModel = viewModel(
         factory = DashboardViewModel.Factory(
-            LocalContext.current.applicationContext as android.app.Application
+            context.applicationContext as android.app.Application
         )
     )
-) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedCategory by remember { mutableStateOf<SpendingCategory?>(null) }
 
@@ -132,10 +133,9 @@ fun DashboardScreen(
     }
 
     selectedCategory?.let { category ->
-        val transactions by viewModel.getTransactionsByCategoryFlow(category.name).collectAsState(initial = emptyList())
         TransactionHistoryDialog(
             category = category,
-            transactions = transactions,
+            transactions = viewModel.getTransactionsByCategory(category.name),
             onDismiss = { selectedCategory = null }
         )
     }

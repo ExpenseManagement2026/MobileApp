@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -32,13 +33,29 @@ import com.example.mobileapp.presentation.home.model.toVndString
 private val GreenPrimary = Color(0xFF2DC98E)
 
 @Composable
-fun HomeScreen(vm: HomeViewModel = viewModel()) {
+fun HomeScreen(vm: HomeViewModel = viewModel(
+    factory = HomeViewModel.Factory(
+        LocalContext.current.applicationContext as android.app.Application
+    )
+)) {
     val state by vm.state.collectAsState()
     HomeContent(state = state)
 }
 
 @Composable
 fun HomeContent(state: HomeState) {
+    if (state.isLoading) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = GreenPrimary)
+        }
+        return
+    }
+    if (state.error != null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(state.error, color = Color.Red)
+        }
+        return
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
