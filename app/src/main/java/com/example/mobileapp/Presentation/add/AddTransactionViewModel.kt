@@ -58,6 +58,10 @@ class AddTransactionViewModel(
         _state.value = _state.value.copy(amount = amount, error = null)
     }
 
+    fun setAmountFromScan(amount: Double) {
+        _state.value = _state.value.copy(amount = amount.toLong().toString(), error = null)
+    }
+
     fun setCategory(category: String) {
         _state.value = _state.value.copy(selectedCategory = category)
     }
