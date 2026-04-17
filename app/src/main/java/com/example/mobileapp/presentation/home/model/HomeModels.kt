@@ -5,7 +5,12 @@ data class Transaction(
     val icon: String,
     val title: String,
     val category: String,
-    val amount: Long, // âm = chi tiêu, dương = thu nhập
+    val amount: Long,
+)
+
+data class ChartPoint(
+    val day: Int,       // ngày trong tháng (1-31)
+    val amount: Float,  // tổng chi tích lũy (đơn vị: nghìn đồng)
 )
 
 data class HomeState(
@@ -15,11 +20,11 @@ data class HomeState(
     val totalIncome: Long = 0L,
     val totalExpense: Long = 0L,
     val chartData: List<Float> = emptyList(),
+    val chartPoints: List<ChartPoint> = emptyList(),
     val recentTransactions: List<Transaction> = emptyList(),
     val error: String? = null,
 )
 
-/** -85000 → "-85.000 đ" | 15200000 → "15.200.000 đ" */
 fun Long.toVndString(): String {
     val abs = Math.abs(this)
     val formatted = abs.toString().reversed().chunked(3).joinToString(".").reversed()

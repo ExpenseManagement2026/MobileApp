@@ -5,16 +5,15 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mobileapp.data.local.BudgetPreferences
 import com.example.mobileapp.data.local.database.AppDatabase
+import com.example.mobileapp.data.mapper.toDomainList
+import com.example.mobileapp.domain.model.Transaction
 import com.example.mobileapp.domain.usecase.CheckBudgetUseCase
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+// --- Data Models ---
 data class CategoryBudget(
     val name: String,
     val spent: Long,
@@ -39,7 +38,8 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
 
     private val prefs = BudgetPreferences(application)
     private val useCase = CheckBudgetUseCase()
-    private val dao = AppDatabase.getDatabase(application).transactionDao()
+    private val db = AppDatabase.getDatabase(application)
+    private val dao = db.transactionDao()
 
     private val _state = MutableStateFlow(BudgetState())
     val state: StateFlow<BudgetState> = _state.asStateFlow()
@@ -49,15 +49,15 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun observeData() {
-        val (startDate, endDate) = currentMonthRange()
+        val now = Calendar.getInstance()
         val sdf = SimpleDateFormat("'Tháng' MM/yyyy", Locale("vi", "VN"))
-        val dateText = sdf.format(Calendar.getInstance().time)
+        val dateText = sdf.format(now.time)
 
         viewModelScope.launch {
-            // Dùng combine thay vì nested collect
+            val (start, end) = currentMonthRange()
             combine(
-                dao.getTotalExpense(startDate, endDate),
-                dao.getCategoryStatistics("EXPENSE", startDate, endDate),
+                dao.getTotalExpense(start, end),
+                dao.getCategoryStatistics("EXPENSE", start, end)
             ) { totalSpent, stats ->
                 val currentBudget = prefs.getBudget()
                 val currentPercent = useCase.getUsedPercent(totalSpent, currentBudget)
@@ -90,10 +90,17 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** Lấy danh sách giao dịch chi tiết cho Dialog */
+    fun getTransactionsByCategory(categoryName: String): Flow<List<Transaction>> {
+        val (start, end) = currentMonthRange()
+        return dao.getTransactionsByCategory(categoryName).map { list ->
+            list.toDomainList().filter { it.date in start..end }
+        }
+    }
+
     fun saveNewBudget(amount: Long) {
         prefs.saveBudget(amount)
         _state.value = _state.value.copy(message = "Đã cập nhật ngân sách thành công!")
-        // Re-observe để cập nhật UI với budget mới
         observeData()
     }
 
@@ -104,8 +111,7 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
     private fun currentMonthRange(): Pair<Long, Long> {
         val cal = Calendar.getInstance()
         cal.set(Calendar.DAY_OF_MONTH, 1)
-        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0)
         val start = cal.timeInMillis
         cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
         cal.set(Calendar.HOUR_OF_DAY, 23); cal.set(Calendar.MINUTE, 59); cal.set(Calendar.SECOND, 59)

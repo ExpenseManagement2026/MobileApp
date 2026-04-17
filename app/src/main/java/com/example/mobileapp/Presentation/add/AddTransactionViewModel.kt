@@ -1,7 +1,7 @@
 package com.example.mobileapp.presentation.add
 
 import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.mobileapp.data.di.RepositoryProvider
@@ -12,98 +12,59 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.Calendar
+import java.util.Date
 
 data class AddTransactionState(
-    val isExpense: Boolean = true,
     val amount: String = "",
-    val selectedCategory: String = "",
+    val isExpense: Boolean = true,
+    val selectedCategory: String = "Khác",
     val note: String = "",
     val isSaved: Boolean = false,
-    val error: String? = null,
-)
-
-val expenseCategories = listOf(
-    "Ăn uống" to "🍜",
-    "Di chuyển" to "🚕",
-    "Mua sắm" to "🛒",
-    "Hóa đơn" to "⚡",
-    "Giải trí" to "🎮",
-    "Sức khỏe" to "💊",
-    "Giáo dục" to "📚",
-    "Khác" to "📦",
-)
-
-val incomeCategories = listOf(
-    "Lương" to "💰",
-    "Thưởng" to "🎁",
-    "Đầu tư" to "📈",
-    "Freelance" to "💻",
-    "Khác" to "📦",
+    val error: String? = null
 )
 
 class AddTransactionViewModel(
-    application: Application,
-    private val repository: TransactionRepository,
-) : AndroidViewModel(application) {
+    private val repository: TransactionRepository
+) : ViewModel() {
 
     private val _state = MutableStateFlow(AddTransactionState())
     val state: StateFlow<AddTransactionState> = _state.asStateFlow()
 
-    fun setType(isExpense: Boolean) {
-        _state.value = _state.value.copy(isExpense = isExpense, selectedCategory = "")
-    }
-
-    fun setAmount(amount: String) {
-        _state.value = _state.value.copy(amount = amount, error = null)
-    }
-
-    fun setCategory(category: String) {
-        _state.value = _state.value.copy(selectedCategory = category)
-    }
-
-    fun setNote(note: String) {
-        _state.value = _state.value.copy(note = note)
-    }
+    fun setAmount(value: String) { _state.value = _state.value.copy(amount = value) }
+    fun setType(isExpense: Boolean) { _state.value = _state.value.copy(isExpense = isExpense) }
+    fun setCategory(name: String) { _state.value = _state.value.copy(selectedCategory = name) }
+    fun setNote(text: String) { _state.value = _state.value.copy(note = text) }
 
     fun save() {
-        val s = _state.value
-        val amountLong = s.amount.replace(".", "").toLongOrNull()
-        when {
-            amountLong == null || amountLong <= 0 ->
-                _state.value = s.copy(error = "Vui lòng nhập số tiền hợp lệ")
-            s.selectedCategory.isEmpty() ->
-                _state.value = s.copy(error = "Vui lòng chọn danh mục")
-            else -> viewModelScope.launch {
-                repository.insertTransaction(
-                    Transaction(
-                        title = s.selectedCategory,
-                        amount = amountLong,
-                        type = if (s.isExpense) TransactionType.EXPENSE else TransactionType.INCOME,
-                        category = s.selectedCategory,
-                        date = Calendar.getInstance().timeInMillis,
-                        note = s.note,
-                    )
-                )
-                // Chỉ set isSaved = true, giữ nguyên các field khác
-                _state.value = s.copy(isSaved = true)
-            }
+        val amountValue = _state.value.amount.toLongOrNull() ?: 0L
+        if (amountValue <= 0) {
+            _state.value = _state.value.copy(error = "Vui lòng nhập số tiền hợp lệ")
+            return
+        }
+
+        viewModelScope.launch {
+            val transaction = Transaction(
+                title = _state.value.selectedCategory,
+                amount = amountValue,
+                type = if (_state.value.isExpense) TransactionType.EXPENSE else TransactionType.INCOME,
+                category = _state.value.selectedCategory,
+                date = Date().time,
+                note = _state.value.note
+            )
+            repository.insertTransaction(transaction)
+            _state.value = _state.value.copy(isSaved = true)
         }
     }
 
-    fun resetState() {
-        _state.value = AddTransactionState()
-    }
-
-    fun markSavedHandled() {
-        _state.value = _state.value.copy(isSaved = false)
+    // QUAN TRỌNG: Hàm này để xóa trạng thái đã lưu, giúp không bị nhảy tab liên tục
+    fun resetSaveState() {
+        _state.value = _state.value.copy(isSaved = false, amount = "", note = "")
     }
 
     class Factory(private val application: Application) : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
             val repo = RepositoryProvider.provideTransactionRepository(application)
-            return AddTransactionViewModel(application, repo) as T
+            return AddTransactionViewModel(repo) as T
         }
     }
 }

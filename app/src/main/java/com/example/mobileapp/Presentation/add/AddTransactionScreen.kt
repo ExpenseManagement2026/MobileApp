@@ -7,8 +7,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,19 +38,15 @@ fun AddTransactionScreen(
         )
     ),
     onSaved: () -> Unit = {},
+    onScanClick: () -> Unit = {}
 ) {
     val state by vm.state.collectAsState()
 
-    // Reset state khi màn hình được mở (composition starts)
-    LaunchedEffect(Unit) {
-        vm.resetState()
-    }
-
-    // Khi lưu thành công, gọi callback và đánh dấu đã xử lý
+    // LẮNG NGHE TRẠNG THÁI LƯU THÀNH CÔNG
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
-            onSaved()
-            vm.markSavedHandled()
+            onSaved() // Chuyển tab
+            vm.resetSaveState() // QUAN TRỌNG: Reset ngay để không bị nhảy tab lần sau
         }
     }
 
@@ -57,27 +57,42 @@ fun AddTransactionScreen(
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Tiêu đề
-        Text(
-            text = "Thêm giao dịch",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Thêm giao dịch",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            
+            IconButton(
+                onClick = onScanClick,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Color(0xFFF5F5F5))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = "Scan AI",
+                    tint = GreenColor
+                )
+            }
+        }
 
-        // Toggle Chi tiêu / Thu nhập
         TypeToggle(
             isExpense = state.isExpense,
             onToggle = { vm.setType(it) }
         )
 
-        // Nhập số tiền
         AmountInput(
             amount = state.amount,
             isExpense = state.isExpense,
             onAmountChange = { vm.setAmount(it) }
         )
 
-        // Chọn danh mục
         val categories = if (state.isExpense) expenseCategories else incomeCategories
         Text("Danh mục", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
         CategoryGrid(
@@ -87,7 +102,6 @@ fun AddTransactionScreen(
             onSelect = { vm.setCategory(it) }
         )
 
-        // Ghi chú
         OutlinedTextField(
             value = state.note,
             onValueChange = { vm.setNote(it) },
@@ -95,14 +109,16 @@ fun AddTransactionScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             maxLines = 2,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                capitalization = KeyboardCapitalization.Sentences
+            )
         )
 
-        // Lỗi
         if (state.error != null) {
             Text(state.error!!, color = Color.Red, fontSize = 13.sp)
         }
 
-        // Nút lưu
         Button(
             onClick = { vm.save() },
             modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -116,8 +132,7 @@ fun AddTransactionScreen(
     }
 }
 
-// ─── Toggle Chi tiêu / Thu nhập ──────────────────────────────────────────────
-
+// ... các thành phần UI khác (TypeToggle, AmountInput, CategoryGrid) giữ nguyên ...
 @Composable
 private fun TypeToggle(isExpense: Boolean, onToggle: (Boolean) -> Unit) {
     Row(
@@ -169,8 +184,6 @@ private fun ToggleButton(
     }
 }
 
-// ─── Nhập số tiền ─────────────────────────────────────────────────────────────
-
 @Composable
 private fun AmountInput(amount: String, isExpense: Boolean, onAmountChange: (String) -> Unit) {
     val accentColor = if (isExpense) RedColor else GreenColor
@@ -189,7 +202,7 @@ private fun AmountInput(amount: String, isExpense: Boolean, onAmountChange: (Str
                 focusedBorderColor = accentColor,
                 focusedLabelColor = accentColor,
             ),
-            textStyle = LocalTextStyle.current.copy(
+            textStyle = androidx.compose.ui.text.TextStyle(
                 fontSize = 20.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = accentColor,
@@ -198,8 +211,6 @@ private fun AmountInput(amount: String, isExpense: Boolean, onAmountChange: (Str
         )
     }
 }
-
-// ─── Grid danh mục ────────────────────────────────────────────────────────────
 
 @Composable
 private fun CategoryGrid(
@@ -245,3 +256,6 @@ private fun CategoryGrid(
         }
     }
 }
+
+private val expenseCategories = listOf("Ăn uống" to "🍜", "Di chuyển" to "🚕", "Mua sắm" to "🛒", "Hóa đơn" to "⚡", "Giải trí" to "🎮", "Sức khỏe" to "💊", "Giáo dục" to "📚", "Khác" to "📦")
+private val incomeCategories = listOf("Lương" to "💰", "Thưởng" to "🎁", "Đầu tư" to "📈", "Freelance" to "💻", "Khác" to "🪙")
