@@ -14,11 +14,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
+enum class PaymentMethod(val label: String, val icon: String) {
+    CASH("Tiền mặt", "💵"),
+    TRANSFER("Chuyển khoản", "🏦")
+}
+
 data class AddTransactionState(
     val isExpense: Boolean = true,
     val amount: String = "",
     val selectedCategory: String = "",
     val note: String = "",
+    val paymentMethod: PaymentMethod = PaymentMethod.CASH,
     val isSaved: Boolean = false,
     val error: String? = null,
 )
@@ -58,12 +64,20 @@ class AddTransactionViewModel(
         _state.value = _state.value.copy(amount = amount, error = null)
     }
 
+    fun setAmountFromScan(amount: Double) {
+        _state.value = _state.value.copy(amount = amount.toLong().toString(), error = null)
+    }
+
     fun setCategory(category: String) {
         _state.value = _state.value.copy(selectedCategory = category)
     }
 
     fun setNote(note: String) {
         _state.value = _state.value.copy(note = note)
+    }
+
+    fun setPaymentMethod(method: PaymentMethod) {
+        _state.value = _state.value.copy(paymentMethod = method)
     }
 
     fun save() {
@@ -82,10 +96,12 @@ class AddTransactionViewModel(
                         type = if (s.isExpense) TransactionType.EXPENSE else TransactionType.INCOME,
                         category = s.selectedCategory,
                         date = Calendar.getInstance().timeInMillis,
-                        note = s.note,
+                        note = buildString {
+                            append("[${s.paymentMethod.name}]")
+                            if (s.note.isNotBlank()) append(" ${s.note.trim()}")
+                        },
                     )
                 )
-                // Chỉ set isSaved = true, giữ nguyên các field khác
                 _state.value = s.copy(isSaved = true)
             }
         }

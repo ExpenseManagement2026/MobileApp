@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mobileapp.presentation.scan.ReceiptScanScreen
 
 private val GreenColor = Color(0xFF2DC98E)
 private val RedColor   = Color(0xFFFF7676)
@@ -36,13 +39,12 @@ fun AddTransactionScreen(
     onSaved: () -> Unit = {},
 ) {
     val state by vm.state.collectAsState()
+    var showScanScreen by remember { mutableStateOf(false) }
 
-    // Reset state khi màn hình được mở (composition starts)
     LaunchedEffect(Unit) {
         vm.resetState()
     }
 
-    // Khi lưu thành công, gọi callback và đánh dấu đã xử lý
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
             onSaved()
@@ -50,34 +52,73 @@ fun AddTransactionScreen(
         }
     }
 
+    if (showScanScreen) {
+        ReceiptScanScreen(
+            onNavigateBack = { showScanScreen = false },
+            onScanComplete = { result ->
+                result.totalAmount?.let { vm.setAmount(it.toLong().toString()) }
+                result.merchantName?.let { vm.setNote(it) }
+                showScanScreen = false
+            }
+        )
+        return
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color.White)
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Tiêu đề
-        Text(
-            text = "Thêm giao dịch",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        // ── Tiêu đề + nút Scan ────────────────────────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Thêm giao dịch",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            OutlinedButton(
+                onClick = { showScanScreen = true },
+                modifier = Modifier.height(40.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = if (state.isExpense) RedColor else GreenColor
+                ),
+                border = ButtonDefaults.outlinedButtonBorder.copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(
+                        if (state.isExpense) RedColor else GreenColor
+                    )
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = "Scan hóa đơn",
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Scan", fontSize = 14.sp)
+            }
+        }
 
-        // Toggle Chi tiêu / Thu nhập
+        // ── Toggle Chi tiêu / Thu nhập ────────────────────────────────────────
         TypeToggle(
             isExpense = state.isExpense,
             onToggle = { vm.setType(it) }
         )
 
-        // Nhập số tiền
+        // ── Nhập số tiền ──────────────────────────────────────────────────────
         AmountInput(
             amount = state.amount,
             isExpense = state.isExpense,
             onAmountChange = { vm.setAmount(it) }
         )
 
-        // Chọn danh mục
+        // ── Chọn danh mục ─────────────────────────────────────────────────────
         val categories = if (state.isExpense) expenseCategories else incomeCategories
         Text("Danh mục", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
         CategoryGrid(
@@ -87,7 +128,7 @@ fun AddTransactionScreen(
             onSelect = { vm.setCategory(it) }
         )
 
-        // Ghi chú
+        // ── Ghi chú ───────────────────────────────────────────────────────────
         OutlinedTextField(
             value = state.note,
             onValueChange = { vm.setNote(it) },
@@ -97,21 +138,81 @@ fun AddTransactionScreen(
             maxLines = 2,
         )
 
-        // Lỗi
+        // ── Phương thức thanh toán (MỚI) ──────────────────────────────────────
+        PaymentMethodToggle(
+            selected = state.paymentMethod,
+            onSelect = { vm.setPaymentMethod(it) }
+        )
+
+        // ── Lỗi ───────────────────────────────────────────────────────────────
         if (state.error != null) {
             Text(state.error!!, color = Color.Red, fontSize = 13.sp)
         }
 
-        // Nút lưu
+        // ── Nút lưu ───────────────────────────────────────────────────────────
         Button(
             onClick = { vm.save() },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (state.isExpense) RedColor else GreenColor
             )
         ) {
             Text("Lưu giao dịch", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+// ─── Phương thức thanh toán ───────────────────────────────────────────────────
+
+@Composable
+private fun PaymentMethodToggle(
+    selected: PaymentMethod,
+    onSelect: (PaymentMethod) -> Unit,
+) {
+    Column {
+        Text(
+            text = "Phương thức thanh toán",
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 15.sp
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFFF5F5F5))
+                .padding(4.dp),
+        ) {
+            PaymentMethod.entries.forEach { method ->
+                val isSelected = selected == method
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            if (isSelected) GreenColor else Color.Transparent
+                        )
+                        .clickable { onSelect(method) }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(method.icon, fontSize = 16.sp)
+                        Text(
+                            text = method.label,
+                            color = if (isSelected) Color.White else Color.Gray,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            fontSize = 14.sp,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -221,7 +322,10 @@ private fun CategoryGrid(
             Column(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (isSelected) accentColor.copy(alpha = 0.12f) else Color(0xFFF8F8F8))
+                    .background(
+                        if (isSelected) accentColor.copy(alpha = 0.12f)
+                        else Color(0xFFF8F8F8)
+                    )
                     .border(
                         width = if (isSelected) 1.5.dp else 0.dp,
                         color = if (isSelected) accentColor else Color.Transparent,
