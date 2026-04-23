@@ -42,12 +42,10 @@ fun AddTransactionScreen(
 ) {
     val state by vm.state.collectAsState()
 
-    // Reset state khi mở màn hình
     LaunchedEffect(Unit) {
         vm.resetState()
     }
 
-    // Xử lý sau khi lưu thành công
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
             onSaved()
@@ -62,7 +60,6 @@ fun AddTransactionScreen(
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // --- Tiêu đề + Nút Scan ---
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -88,20 +85,17 @@ fun AddTransactionScreen(
             }
         }
 
-        // --- Toggle Chi tiêu / Thu nhập ---
         TypeToggle(
             isExpense = state.isExpense,
             onToggle = { vm.setType(it) }
         )
 
-        // --- Nhập số tiền ---
         AmountInput(
             amount = state.amount,
             isExpense = state.isExpense,
             onAmountChange = { vm.setAmount(it) }
         )
 
-        // --- Chọn danh mục ---
         val categories = if (state.isExpense) expenseCategories else incomeCategories
         Text("Danh mục", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
         CategoryGrid(
@@ -111,7 +105,6 @@ fun AddTransactionScreen(
             onSelect = { vm.setCategory(it) }
         )
 
-        // --- Ghi chú ---
         OutlinedTextField(
             value = state.note,
             onValueChange = { vm.setNote(it) },
@@ -125,17 +118,18 @@ fun AddTransactionScreen(
             )
         )
 
-        // --- Phương thức thanh toán ---
-        PaymentMethodToggle(
-            selected = state.paymentMethod,
-            onSelect = { vm.setPaymentMethod(it) }
-        )
+        // CHỈ HIỂN THỊ PHƯƠNG THỨC THANH TOÁN KHI LÀ "CHI TIÊU"
+        if (state.isExpense) {
+            PaymentMethodToggle(
+                selected = state.paymentMethod,
+                onSelect = { vm.setPaymentMethod(it) }
+            )
+        }
 
         if (state.error != null) {
             Text(state.error!!, color = Color.Red, fontSize = 13.sp)
         }
 
-        // --- Nút lưu ---
         Button(
             onClick = { vm.save() },
             modifier = Modifier.fillMaxWidth().height(52.dp),
