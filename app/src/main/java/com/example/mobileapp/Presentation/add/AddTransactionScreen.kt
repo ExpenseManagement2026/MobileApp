@@ -42,11 +42,16 @@ fun AddTransactionScreen(
 ) {
     val state by vm.state.collectAsState()
 
-    // LẮNG NGHE TRẠNG THÁI LƯU THÀNH CÔNG
+    // Reset state khi mở màn hình
+    LaunchedEffect(Unit) {
+        vm.resetState()
+    }
+
+    // Xử lý sau khi lưu thành công
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
-            onSaved() // Chuyển tab
-            vm.resetSaveState() // QUAN TRỌNG: Reset ngay để không bị nhảy tab lần sau
+            onSaved()
+            vm.resetSaveState()
         }
     }
 
@@ -57,6 +62,7 @@ fun AddTransactionScreen(
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        // --- Tiêu đề + Nút Scan ---
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -82,17 +88,20 @@ fun AddTransactionScreen(
             }
         }
 
+        // --- Toggle Chi tiêu / Thu nhập ---
         TypeToggle(
             isExpense = state.isExpense,
             onToggle = { vm.setType(it) }
         )
 
+        // --- Nhập số tiền ---
         AmountInput(
             amount = state.amount,
             isExpense = state.isExpense,
             onAmountChange = { vm.setAmount(it) }
         )
 
+        // --- Chọn danh mục ---
         val categories = if (state.isExpense) expenseCategories else incomeCategories
         Text("Danh mục", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
         CategoryGrid(
@@ -102,6 +111,7 @@ fun AddTransactionScreen(
             onSelect = { vm.setCategory(it) }
         )
 
+        // --- Ghi chú ---
         OutlinedTextField(
             value = state.note,
             onValueChange = { vm.setNote(it) },
@@ -115,10 +125,17 @@ fun AddTransactionScreen(
             )
         )
 
+        // --- Phương thức thanh toán ---
+        PaymentMethodToggle(
+            selected = state.paymentMethod,
+            onSelect = { vm.setPaymentMethod(it) }
+        )
+
         if (state.error != null) {
             Text(state.error!!, color = Color.Red, fontSize = 13.sp)
         }
 
+        // --- Nút lưu ---
         Button(
             onClick = { vm.save() },
             modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -132,7 +149,47 @@ fun AddTransactionScreen(
     }
 }
 
-// ... các thành phần UI khác (TypeToggle, AmountInput, CategoryGrid) giữ nguyên ...
+@Composable
+private fun PaymentMethodToggle(
+    selected: PaymentMethod,
+    onSelect: (PaymentMethod) -> Unit,
+) {
+    Column {
+        Text(text = "Phương thức thanh toán", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFFF5F5F5))
+                .padding(4.dp),
+        ) {
+            PaymentMethod.entries.forEach { method ->
+                val isSelected = selected == method
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isSelected) GreenColor else Color.Transparent)
+                        .clickable { onSelect(method) }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(method.icon, fontSize = 16.sp)
+                        Text(
+                            text = method.label,
+                            color = if (isSelected) Color.White else Color.Gray,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            fontSize = 14.sp,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun TypeToggle(isExpense: Boolean, onToggle: (Boolean) -> Unit) {
     Row(
@@ -160,13 +217,7 @@ private fun TypeToggle(isExpense: Boolean, onToggle: (Boolean) -> Unit) {
 }
 
 @Composable
-private fun ToggleButton(
-    label: String,
-    selected: Boolean,
-    selectedColor: Color,
-    modifier: Modifier,
-    onClick: () -> Unit,
-) {
+private fun ToggleButton(label: String, selected: Boolean, selectedColor: Color, modifier: Modifier, onClick: () -> Unit) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
@@ -213,12 +264,7 @@ private fun AmountInput(amount: String, isExpense: Boolean, onAmountChange: (Str
 }
 
 @Composable
-private fun CategoryGrid(
-    categories: List<Pair<String, String>>,
-    selected: String,
-    isExpense: Boolean,
-    onSelect: (String) -> Unit,
-) {
+private fun CategoryGrid(categories: List<Pair<String, String>>, selected: String, isExpense: Boolean, onSelect: (String) -> Unit) {
     val accentColor = if (isExpense) RedColor else GreenColor
     LazyVerticalGrid(
         columns = GridCells.Fixed(4),
