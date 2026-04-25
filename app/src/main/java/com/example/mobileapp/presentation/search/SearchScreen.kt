@@ -148,7 +148,9 @@ private val filterItems = listOf(
     FilterItem(FilterType.WEEK,    "Tuần này"),
     FilterItem(FilterType.MONTH,   "Tháng này"),
     FilterItem(FilterType.INCOME,  "Thu nhập"),
-    FilterItem(FilterType.EXPENSE, "Chi tiêu")
+    FilterItem(FilterType.EXPENSE, "Chi tiêu"),
+    FilterItem(FilterType.TRANSFER, "Chuyển khoản"),
+    FilterItem(FilterType.CASH,     "Tiền mặt")
 )
 
 @Composable

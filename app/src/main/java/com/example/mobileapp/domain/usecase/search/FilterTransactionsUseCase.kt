@@ -29,6 +29,9 @@ class FilterTransactionsUseCase {
                 FilterType.MONTH -> transCalendar.get(Calendar.MONTH) == currentMonth && transCalendar.get(Calendar.YEAR) == currentYear
                 FilterType.INCOME -> trans.type == TransactionType.INCOME
                 FilterType.EXPENSE -> trans.type == TransactionType.EXPENSE
+                // Lọc bằng cách tìm từ khóa trong ghi chú
+                FilterType.TRANSFER -> trans.note.contains("Chuyển khoản", ignoreCase = true)
+                FilterType.CASH -> trans.note.contains("Tiền mặt", ignoreCase = true)
             }
 
             matchesQuery && matchesFilter
