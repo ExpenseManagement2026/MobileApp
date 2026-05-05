@@ -15,12 +15,15 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 
 data class AddTransactionState(
+    val transactionId: Long? = null,  // null = Add mode, not null = Edit mode
     val isExpense: Boolean = true,
     val amount: String = "",
     val selectedCategory: String = "",
     val note: String = "",
+    val selectedDate: Long = Calendar.getInstance().timeInMillis,  // Timestamp của ngày được chọn
     val isSaved: Boolean = false,
     val error: String? = null,
+    val isLoading: Boolean = false,
 )
 
 val expenseCategories = listOf(
@@ -50,6 +53,29 @@ class AddTransactionViewModel(
     private val _state = MutableStateFlow(AddTransactionState())
     val state: StateFlow<AddTransactionState> = _state.asStateFlow()
 
+    /**
+     * Load transaction for editing
+     */
+    fun loadTransaction(transactionId: Long) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true)
+            val transaction = repository.getTransactionById(transactionId)
+            if (transaction != null) {
+                _state.value = AddTransactionState(
+                    transactionId = transaction.id,
+                    isExpense = transaction.type == TransactionType.EXPENSE,
+                    amount = transaction.amount.toString(),
+                    selectedCategory = transaction.category,
+                    note = transaction.note,
+                    selectedDate = transaction.date,
+                    isLoading = false,
+                )
+            } else {
+                _state.value = _state.value.copy(isLoading = false, error = "Không tìm thấy giao dịch")
+            }
+        }
+    }
+
     fun setType(isExpense: Boolean) {
         _state.value = _state.value.copy(isExpense = isExpense, selectedCategory = "")
     }
@@ -70,6 +96,10 @@ class AddTransactionViewModel(
         _state.value = _state.value.copy(note = note)
     }
 
+    fun setDate(timestamp: Long) {
+        _state.value = _state.value.copy(selectedDate = timestamp)
+    }
+
     fun save() {
         val s = _state.value
         val amountLong = s.amount.replace(".", "").toLongOrNull()
@@ -79,16 +109,32 @@ class AddTransactionViewModel(
             s.selectedCategory.isEmpty() ->
                 _state.value = s.copy(error = "Vui lòng chọn danh mục")
             else -> viewModelScope.launch {
-                repository.insertTransaction(
-                    Transaction(
-                        title = s.selectedCategory,
-                        amount = amountLong,
-                        type = if (s.isExpense) TransactionType.EXPENSE else TransactionType.INCOME,
-                        category = s.selectedCategory,
-                        date = Calendar.getInstance().timeInMillis,
-                        note = s.note,
+                if (s.transactionId != null) {
+                    // Edit mode - update existing transaction
+                    repository.updateTransaction(
+                        Transaction(
+                            id = s.transactionId,
+                            title = s.selectedCategory,
+                            amount = amountLong,
+                            type = if (s.isExpense) TransactionType.EXPENSE else TransactionType.INCOME,
+                            category = s.selectedCategory,
+                            date = s.selectedDate,
+                            note = s.note,
+                        )
                     )
-                )
+                } else {
+                    // Add mode - insert new transaction
+                    repository.insertTransaction(
+                        Transaction(
+                            title = s.selectedCategory,
+                            amount = amountLong,
+                            type = if (s.isExpense) TransactionType.EXPENSE else TransactionType.INCOME,
+                            category = s.selectedCategory,
+                            date = s.selectedDate,
+                            note = s.note,
+                        )
+                    )
+                }
                 // Chỉ set isSaved = true, giữ nguyên các field khác
                 _state.value = s.copy(isSaved = true)
             }

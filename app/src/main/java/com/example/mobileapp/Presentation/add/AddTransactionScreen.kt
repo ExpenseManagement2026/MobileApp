@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,12 +28,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobileapp.presentation.scan.ReceiptScanScreen
+import java.text.SimpleDateFormat
+import java.util.*
 
 private val GreenColor = Color(0xFF2DC98E)
 private val RedColor   = Color(0xFFFF7676)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTransactionScreen(
+    transactionId: Long? = null,  // null = Add mode, not null = Edit mode
     vm: AddTransactionViewModel = viewModel(
         factory = AddTransactionViewModel.Factory(
             LocalContext.current.applicationContext as android.app.Application
@@ -40,10 +47,15 @@ fun AddTransactionScreen(
 ) {
     val state by vm.state.collectAsState()
     var showScanScreen by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
-    // Reset state khi màn hình được mở (composition starts)
-    LaunchedEffect(Unit) {
-        vm.resetState()
+    // Load transaction for editing or reset for adding
+    LaunchedEffect(transactionId) {
+        if (transactionId != null) {
+            vm.loadTransaction(transactionId)
+        } else {
+            vm.resetState()
+        }
     }
 
     // Khi lưu thành công, gọi callback và đánh dấu đã xử lý
@@ -76,6 +88,7 @@ fun AddTransactionScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
@@ -86,32 +99,34 @@ fun AddTransactionScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Thêm giao dịch",
+                text = if (state.transactionId != null) "Sửa giao dịch" else "Thêm giao dịch",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
             )
             
-            // Nút scan hóa đơn
-            OutlinedButton(
-                onClick = { showScanScreen = true },
-                modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = if (state.isExpense) RedColor else GreenColor
-                ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(
-                        if (state.isExpense) RedColor else GreenColor
+            // Nút scan hóa đơn (chỉ hiện khi thêm mới)
+            if (state.transactionId == null) {
+                OutlinedButton(
+                    onClick = { showScanScreen = true },
+                    modifier = Modifier.height(40.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = if (state.isExpense) RedColor else GreenColor
+                    ),
+                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                        brush = androidx.compose.ui.graphics.SolidColor(
+                            if (state.isExpense) RedColor else GreenColor
+                        )
                     )
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CameraAlt,
-                    contentDescription = "Scan hóa đơn",
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Scan", fontSize = 14.sp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = "Scan hóa đơn",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Scan", fontSize = 14.sp)
+                }
             }
         }
 
@@ -148,6 +163,13 @@ fun AddTransactionScreen(
             maxLines = 2,
         )
 
+        // Chọn ngày
+        DateSelector(
+            selectedDate = state.selectedDate,
+            isExpense = state.isExpense,
+            onClick = { showDatePicker = true }
+        )
+
         // Lỗi
         if (state.error != null) {
             Text(state.error!!, color = Color.Red, fontSize = 13.sp)
@@ -160,9 +182,52 @@ fun AddTransactionScreen(
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (state.isExpense) RedColor else GreenColor
-            )
+            ),
+            enabled = !state.isLoading
         ) {
-            Text("Lưu giao dịch", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            if (state.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(
+                    text = if (state.transactionId != null) "Cập nhật" else "Lưu giao dịch",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        // Spacer để đảm bảo nút không bị che bởi bottom navigation
+        Spacer(modifier = Modifier.height(80.dp))
+    }
+
+    // Date Picker Dialog
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = state.selectedDate
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { vm.setDate(it) }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Hủy")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }
@@ -247,6 +312,67 @@ private fun AmountInput(amount: String, isExpense: Boolean, onAmountChange: (Str
             ),
             singleLine = true,
         )
+    }
+}
+
+// ─── Grid danh mục ────────────────────────────────────────────────────────────
+
+@Composable
+private fun DateSelector(
+    selectedDate: Long,
+    isExpense: Boolean,
+    onClick: () -> Unit
+) {
+    val accentColor = if (isExpense) RedColor else GreenColor
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale("vi", "VN"))
+    val formattedDate = dateFormat.format(Date(selectedDate))
+    
+    Column {
+        Text("Ngày giao dịch", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+        Spacer(Modifier.height(6.dp))
+        OutlinedCard(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.outlinedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            border = CardDefaults.outlinedCardBorder().copy(
+                brush = androidx.compose.ui.graphics.SolidColor(accentColor)
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarToday,
+                        contentDescription = "Chọn ngày",
+                        tint = accentColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = formattedDate,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Text(
+                    text = "Thay đổi",
+                    fontSize = 13.sp,
+                    color = accentColor,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
     }
 }
 

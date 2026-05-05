@@ -64,12 +64,25 @@ fun MainScreen(
 
     var selectedIndex by remember { mutableIntStateOf(0) }
     var showSettings by remember { mutableStateOf(false) }
+    var editTransactionId by remember { mutableStateOf<Long?>(null) }
     val greenColor = Color(0xFF26A480)
 
     if (showSettings) {
         SettingsScreen(
             onBack = { showSettings = false },
             onThemeChanged = onThemeChanged,
+        )
+        return
+    }
+
+    // Show edit screen when editTransactionId is set
+    if (editTransactionId != null) {
+        AddTransactionScreen(
+            transactionId = editTransactionId,
+            onSaved = {
+                editTransactionId = null
+                selectedIndex = 1  // Back to Search screen
+            }
         )
         return
     }
@@ -120,7 +133,9 @@ fun MainScreen(
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedIndex) {
                 0 -> HomeScreen(onSettingsClick = { showSettings = true })
-                1 -> SearchScreen()
+                1 -> SearchScreen(onEditTransaction = { transactionId ->
+                    editTransactionId = transactionId
+                })
                 2 -> AddTransactionScreen(onSaved = { selectedIndex = 0 })
                 3 -> BudgetScreen()
                 4 -> DashboardScreen()

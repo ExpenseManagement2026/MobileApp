@@ -2,12 +2,16 @@ package com.example.mobileapp.presentation.budget
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +24,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 private val GreenPrimary = Color(0xFF2DC98E)
 private val WarningColor = Color(0xFFF44336)
@@ -35,6 +41,7 @@ fun BudgetScreen() {
         }
     )
     val state by viewModel.state.collectAsState()
+    val selectedMonth by viewModel.selectedMonth.collectAsState()
 
     LaunchedEffect(state.message) {
         state.message?.let {
@@ -58,16 +65,32 @@ fun BudgetScreen() {
             ) {
                 Column {
                     Text("Ngân sách của bạn", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Text(state.currentDateText, color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+                    Spacer(Modifier.height(8.dp))
+                    // Month selector
+                    MonthSelector(
+                        selectedMonth = selectedMonth,
+                        onPreviousMonth = { viewModel.previousMonth() },
+                        onNextMonth = { viewModel.nextMonth() }
+                    )
                 }
             }
         }
 
         // Card tổng quan
         item {
+            val isOverBudget = state.percent > 100
+            val isWarning = state.percent >= 80 && state.percent <= 100
+            val displayPercent = if (isOverBudget) 100 else state.percent
+            
+            val cardColor = when {
+                isOverBudget -> WarningColor  // Đỏ khi vượt
+                isWarning -> Color(0xFFFFA000)  // Vàng khi 80-100%
+                else -> GreenPrimary  // Xanh khi < 80%
+            }
+            
             Card(
                 modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = GreenPrimary),
+                colors = CardDefaults.cardColors(containerColor = cardColor),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(4.dp)
             ) {
@@ -81,24 +104,48 @@ fun BudgetScreen() {
                     )
                     Spacer(Modifier.height(16.dp))
                     LinearProgressIndicator(
-                        progress = { (state.percent / 100f).coerceIn(0f, 1f) },
+                        progress = { (displayPercent / 100f).coerceIn(0f, 1f) },
                         modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                        color = if (state.percent >= 80) WarningColor else Color.White,
+                        color = Color.White,
                         trackColor = Color.White.copy(alpha = 0.3f),
                     )
-                    Text(
-                        "${state.percent}%",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        modifier = Modifier.align(Alignment.End).padding(top = 4.dp),
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isOverBudget) {
+                            Text(
+                                "⚠️ Vượt ${state.remainingText}",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        } else {
+                            Text(
+                                "Còn lại ${state.remainingText}",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = if (isWarning) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                        Text(
+                            if (isOverBudget) "100%" else "${state.percent}%",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                        )
+                    }
                     Spacer(Modifier.height(16.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         BudgetInfoBox("Đã chi", state.spentText, Modifier.weight(1f))
-                        BudgetInfoBox("Còn lại", state.remainingText, Modifier.weight(1f))
+                        BudgetInfoBox(
+                            if (isOverBudget) "Vượt" else "Còn lại",
+                            state.remainingText,
+                            Modifier.weight(1f)
+                        )
                     }
                 }
             }
@@ -107,6 +154,10 @@ fun BudgetScreen() {
         // Thiết lập ngân sách
         item {
             var inputAmount by remember { mutableStateOf("") }
+            val monthText = remember(selectedMonth) {
+                SimpleDateFormat("MM/yyyy", Locale("vi", "VN")).format(selectedMonth.time)
+            }
+            
             Card(
                 modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -114,7 +165,19 @@ fun BudgetScreen() {
                 elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Thiết lập ngân sách", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Thiết lập ngân sách", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(
+                            "Tháng $monthText",
+                            fontSize = 13.sp,
+                            color = GreenPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = inputAmount,
@@ -145,7 +208,7 @@ fun BudgetScreen() {
                         colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
                         shape = RoundedCornerShape(12.dp),
                     ) {
-                        Text("Cập nhật ngân sách", fontWeight = FontWeight.SemiBold)
+                        Text("Cập nhật ngân sách tháng $monthText", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                     }
                 }
             }
@@ -257,4 +320,59 @@ private fun Long.formatVnd(): String {
     val abs = Math.abs(this)
     val formatted = abs.toString().reversed().chunked(3).joinToString(".").reversed()
     return "$formatted đ"
+}
+
+// ── Month Selector ────────────────────────────────────────────────────
+@Composable
+private fun MonthSelector(
+    selectedMonth: Calendar,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit
+) {
+    val sdf = SimpleDateFormat("'Tháng' MM/yyyy", Locale("vi", "VN"))
+    val monthText = sdf.format(selectedMonth.time)
+    
+    // Check if next month is available (not future)
+    val now = Calendar.getInstance()
+    val canGoNext = selectedMonth.get(Calendar.YEAR) < now.get(Calendar.YEAR) ||
+            (selectedMonth.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
+             selectedMonth.get(Calendar.MONTH) < now.get(Calendar.MONTH))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(
+            onClick = onPreviousMonth,
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.ChevronLeft,
+                contentDescription = "Tháng trước",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        
+        Text(
+            text = monthText,
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        
+        IconButton(
+            onClick = onNextMonth,
+            enabled = canGoNext,
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Tháng sau",
+                tint = if (canGoNext) Color.White else Color.White.copy(alpha = 0.3f),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
 }
