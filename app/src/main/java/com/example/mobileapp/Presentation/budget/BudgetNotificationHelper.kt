@@ -15,7 +15,8 @@ import com.example.mobileapp.R
 
 class BudgetNotificationHelper(private val context: Context) {
 
-    private val channelId = "priority_budget_alerts_v12"
+    // Sử dụng ID mới để hệ thống reset toàn bộ cài đặt, đảm bảo nổ chuông và hiện popup
+    private val channelId = "budget_alerts_urgent_v2"
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     init {
@@ -27,21 +28,20 @@ class BudgetNotificationHelper(private val context: Context) {
             val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             val audioAttributes = AudioAttributes.Builder()
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                 .build()
 
             val channel = NotificationChannel(
                 channelId,
-                "Cảnh báo ngân sách (Quan trọng)",
+                "Cảnh báo chi tiêu khẩn cấp",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Hiển thị popup và phát chuông báo động chi tiêu"
+                description = "Thông báo khi bạn chi tiêu sắp vượt ngưỡng ngân sách"
                 enableLights(true)
                 lightColor = Color.RED
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 500, 250, 500)
                 setSound(soundUri, audioAttributes)
-                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -52,27 +52,25 @@ class BudgetNotificationHelper(private val context: Context) {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         
-        // ID độc lập cho từng thông báo để nổ chuông liên tục
         val notificationId = System.currentTimeMillis().toInt()
-        
         val pendingIntent = PendingIntent.getActivity(
             context, notificationId, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
         val builder = NotificationCompat.Builder(context, channelId)
+            // Sử dụng icon chuẩn của app để đảm bảo hiển thị tốt trên thanh trạng thái
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setPriority(NotificationCompat.PRIORITY_MAX) // Mức cao nhất để hiện Popup
+            .setPriority(NotificationCompat.PRIORITY_MAX) // Ép buộc hiện Popup (Heads-up)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setColor(Color.parseColor(hexColor))
             .setAutoCancel(true)
             .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
             .setVibrate(longArrayOf(0, 500, 250, 500))
             .setContentIntent(pendingIntent)
-            .setOnlyAlertOnce(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
         notificationManager.notify(notificationId, builder.build())

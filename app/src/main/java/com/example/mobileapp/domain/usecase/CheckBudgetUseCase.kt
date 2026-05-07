@@ -10,7 +10,7 @@ class CheckBudgetUseCase {
     }
 
     fun getRemaining(budget: Long, totalSpent: Long): Long {
-        return (budget - totalSpent).coerceAtLeast(0L)
+        return budget - totalSpent
     }
 
     fun getStatus(percent: Int): String {

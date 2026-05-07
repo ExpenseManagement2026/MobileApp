@@ -7,13 +7,17 @@ import androidx.lifecycle.viewModelScope
 import com.example.mobileapp.data.di.RepositoryProvider
 import com.example.mobileapp.domain.model.TransactionType
 import com.example.mobileapp.domain.repository.TransactionRepository
+import com.example.mobileapp.presentation.home.model.DayBar
 import com.example.mobileapp.presentation.home.model.HomeState
+import com.example.mobileapp.presentation.home.model.SelectedMonth
 import com.example.mobileapp.presentation.home.model.Transaction
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -25,44 +29,86 @@ class HomeViewModel(
     private val _state = MutableStateFlow(HomeState(isLoading = true))
     val state: StateFlow<HomeState> = _state.asStateFlow()
 
+    private val _selectedMonth = MutableStateFlow(SelectedMonth.current())
+
     init {
         observeData()
     }
 
+    fun previousMonth() {
+        val cur = _selectedMonth.value
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.MONTH, cur.month)
+            set(Calendar.YEAR, cur.year)
+            add(Calendar.MONTH, -1)
+        }
+        _selectedMonth.value = SelectedMonth(cal.get(Calendar.MONTH), cal.get(Calendar.YEAR))
+    }
+
+    fun nextMonth() {
+        val cur = _selectedMonth.value
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.MONTH, cur.month)
+            set(Calendar.YEAR, cur.year)
+            add(Calendar.MONTH, 1)
+        }
+        val now = Calendar.getInstance()
+        if (cal.get(Calendar.YEAR) > now.get(Calendar.YEAR) ||
+            (cal.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
+             cal.get(Calendar.MONTH) > now.get(Calendar.MONTH))) return
+        _selectedMonth.value = SelectedMonth(cal.get(Calendar.MONTH), cal.get(Calendar.YEAR))
+    }
+
+    fun isCurrentMonth(): Boolean {
+        val now = Calendar.getInstance()
+        val sel = _selectedMonth.value
+        return sel.month == now.get(Calendar.MONTH) && sel.year == now.get(Calendar.YEAR)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeData() {
-        val (startDate, endDate) = currentMonthRange()
+        val allTimeStart = 0L
+        val allTimeEnd = Long.MAX_VALUE
 
         viewModelScope.launch {
             try {
-                combine(
-                    repository.getAllTransactions(),
-                    repository.getStatistics(startDate, endDate),
-                ) { transactions, stats ->
-                    // Map domain.Transaction → home.model.Transaction (dùng emoji theo category)
-                    val recent = transactions.take(10).map { tx ->
-                        Transaction(
-                            id = tx.id.toString(),
-                            icon = categoryIcon(tx.category),
-                            title = tx.title,
-                            category = tx.category,
-                            amount = if (tx.type == TransactionType.EXPENSE) -tx.amount else tx.amount,
+                _selectedMonth.flatMapLatest { selected ->
+                    val (startDate, endDate) = getMonthRange(selected.month, selected.year)
+                    combine(
+                        repository.getAllTransactions(),
+                        repository.getStatistics(startDate, endDate),
+                        repository.getStatistics(allTimeStart, allTimeEnd),
+                    ) { transactions, monthStats, allTimeStats ->
+                        val recent = transactions
+                            .filter { tx ->
+                                val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
+                                txCal.get(Calendar.MONTH) == selected.month &&
+                                txCal.get(Calendar.YEAR) == selected.year
+                            }
+                            .take(10)
+                            .map { tx ->
+                                Transaction(
+                                    id = tx.id.toString(),
+                                    icon = categoryIcon(tx.category),
+                                    title = tx.title,
+                                    category = tx.category,
+                                    amount = if (tx.type == TransactionType.EXPENSE) -tx.amount else tx.amount,
+                                )
+                            }
+
+                        val dailyBars = buildDailyBars(transactions, selected)
+
+                        HomeState(
+                            isLoading = false,
+                            greeting = "Xin chào,",
+                            selectedMonth = selected,
+                            totalBalance = allTimeStats.balance,
+                            totalIncome = monthStats.totalIncome,
+                            totalExpense = monthStats.totalExpense,
+                            dailyBars = dailyBars,
+                            recentTransactions = recent,
                         )
                     }
-
-                    // Tạo chart data: tổng chi theo từng ngày trong tháng (đơn vị nghìn đồng)
-                    val chartData = buildChartData(transactions)
-                    val chartPoints = buildChartPoints(transactions)
-
-                    HomeState(
-                        isLoading = false,
-                        greeting = "Xin chào,",
-                        totalBalance = stats.balance,
-                        totalIncome = stats.totalIncome,
-                        totalExpense = stats.totalExpense,
-                        chartData = chartData,
-                        chartPoints = chartPoints,
-                        recentTransactions = recent,
-                    )
                 }.collectLatest { newState ->
                     _state.value = newState
                 }
@@ -72,77 +118,54 @@ class HomeViewModel(
         }
     }
 
-    fun refresh() {
-        _state.value = _state.value.copy(isLoading = true)
-        observeData()
-    }
-
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    /** Build chart points với nhãn ngày thực tế */
-    private fun buildChartPoints(transactions: List<com.example.mobileapp.domain.model.Transaction>): List<com.example.mobileapp.presentation.home.model.ChartPoint> {
-        val cal = Calendar.getInstance()
-        val today = cal.get(Calendar.DAY_OF_MONTH)
-        val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-        val dailyExpense = FloatArray(daysInMonth) { 0f }
-        val (startDate, _) = currentMonthRange()
-        val startCal = Calendar.getInstance().apply { timeInMillis = startDate }
-        transactions.filter { it.type == TransactionType.EXPENSE }.forEach { tx ->
-            val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-            if (txCal.get(Calendar.MONTH) == startCal.get(Calendar.MONTH) &&
-                txCal.get(Calendar.YEAR) == startCal.get(Calendar.YEAR)) {
-                val day = txCal.get(Calendar.DAY_OF_MONTH) - 1
-                dailyExpense[day] += tx.amount / 1000f
-            }
-        }
-        // Tích lũy
-        for (i in 1 until daysInMonth) dailyExpense[i] += dailyExpense[i - 1]
-        // Lấy 7 điểm đại diện từ ngày 1 đến hôm nay
-        val activeDays = today.coerceAtMost(daysInMonth)
-        val step = (activeDays / 6).coerceAtLeast(1)
-        val points = mutableListOf<com.example.mobileapp.presentation.home.model.ChartPoint>()
-        var d = 0
-        while (d < activeDays) {
-            points.add(com.example.mobileapp.presentation.home.model.ChartPoint(
-                day = d + 1,
-                amount = dailyExpense[d].coerceAtLeast(0f)
-            ))
-            d += step
-        }
-        // Đảm bảo luôn có điểm hôm nay
-        if (points.lastOrNull()?.day != today) {
-            points.add(com.example.mobileapp.presentation.home.model.ChartPoint(
-                day = today,
-                amount = dailyExpense[today - 1].coerceAtLeast(0f)
-            ))
-        }
-        return points
-    }
+    /**
+     * Tính tổng chi tiêu theo từng ngày trong tháng.
+     * Tháng hiện tại: chỉ hiện đến hôm nay.
+     * Tháng cũ: hiện cả tháng.
+     */
+    private fun buildDailyBars(
+        transactions: List<com.example.mobileapp.domain.model.Transaction>,
+        selected: SelectedMonth,
+    ): List<DayBar> {
+        val now = Calendar.getInstance()
+        val isCurrentMonth = selected.month == now.get(Calendar.MONTH) &&
+                             selected.year == now.get(Calendar.YEAR)
+        val today = now.get(Calendar.DAY_OF_MONTH)
 
-    /** Tính tổng chi theo ngày trong tháng hiện tại để vẽ biểu đồ */
-    private fun buildChartData(transactions: List<com.example.mobileapp.domain.model.Transaction>): List<Float> {        val cal = Calendar.getInstance()
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.YEAR, selected.year)
+            set(Calendar.MONTH, selected.month)
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
         val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-        val dailyExpense = FloatArray(daysInMonth) { 0f }
-        val (startDate, _) = currentMonthRange()
-        val startCal = Calendar.getInstance().apply { timeInMillis = startDate }
+        val activeDays = if (isCurrentMonth) today else daysInMonth
+
+        // Tổng chi theo từng ngày
+        val dailyExpense = LongArray(daysInMonth) { 0L }
         transactions.filter { it.type == TransactionType.EXPENSE }.forEach { tx ->
             val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-            if (txCal.get(Calendar.MONTH) == startCal.get(Calendar.MONTH) &&
-                txCal.get(Calendar.YEAR) == startCal.get(Calendar.YEAR)) {
-                val day = txCal.get(Calendar.DAY_OF_MONTH) - 1
-                dailyExpense[day] += tx.amount / 1000f
+            if (txCal.get(Calendar.MONTH) == selected.month &&
+                txCal.get(Calendar.YEAR) == selected.year) {
+                val dayIdx = txCal.get(Calendar.DAY_OF_MONTH) - 1
+                dailyExpense[dayIdx] += tx.amount
             }
         }
-        for (i in 1 until daysInMonth) dailyExpense[i] += dailyExpense[i - 1]
-        val step = daysInMonth / 8
-        return (0 until 8).map { i ->
-            val idx = (i * step).coerceAtMost(daysInMonth - 1)
-            dailyExpense[idx].coerceAtLeast(1f)
+
+        return (0 until activeDays).map { i ->
+            DayBar(
+                day = i + 1,
+                expense = dailyExpense[i],
+                isToday = isCurrentMonth && (i + 1 == today),
+            )
         }
     }
 
-    private fun currentMonthRange(): Pair<Long, Long> {
+    private fun getMonthRange(month: Int, year: Int): Pair<Long, Long> {
         val cal = Calendar.getInstance()
+        cal.set(Calendar.YEAR, year)
+        cal.set(Calendar.MONTH, month)
         cal.set(Calendar.DAY_OF_MONTH, 1)
         cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
         cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
@@ -166,8 +189,6 @@ class HomeViewModel(
         "Freelance" -> "💻"
         else        -> "📦"
     }
-
-    // ─── Factory ─────────────────────────────────────────────────────────────
 
     class Factory(private val application: Application) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

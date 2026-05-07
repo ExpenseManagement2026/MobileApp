@@ -27,6 +27,9 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
+                // Kiểm tra nếu database đã bị đóng thì tạo lại instance mới
+                if (INSTANCE?.isOpen == false) INSTANCE = null
+                
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
@@ -42,6 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
                             }
                         }
                     })
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance
@@ -57,9 +61,9 @@ abstract class AppDatabase : RoomDatabase() {
             }
             val samples = listOf(
                 TransactionEntity(title = "Lương tháng",       amount = 15_000_000, type = "INCOME",  category = "Lương",      date = daysAgo(1), note = ""),
-                TransactionEntity(title = "Cơm trưa",          amount = 45_000,     type = "EXPENSE", category = "Ăn uống",    date = daysAgo(0), note = ""),
-                TransactionEntity(title = "Cafe sáng",         amount = 35_000,     type = "EXPENSE", category = "Ăn uống",    date = daysAgo(0), note = ""),
-                TransactionEntity(title = "Grab đi làm",       amount = 42_000,     type = "EXPENSE", category = "Di chuyển",  date = daysAgo(1), note = ""),
+                TransactionEntity(title = "Cơm trưa",          amount = 45_000,     type = "EXPENSE", category = "Ăn uống",    date = daysAgo(0), note = "[Tiền mặt]"),
+                TransactionEntity(title = "Cafe sáng",         amount = 35_000,     type = "EXPENSE", category = "Ăn uống",    date = daysAgo(0), note = "[Tiền mặt]"),
+                TransactionEntity(title = "Grab đi làm",       amount = 42_000,     type = "EXPENSE", category = "Di chuyển",  date = daysAgo(1), note = "[Chuyển khoản]"),
                 TransactionEntity(title = "Ăn tối nhà hàng",  amount = 320_000,    type = "EXPENSE", category = "Ăn uống",    date = daysAgo(2), note = ""),
                 TransactionEntity(title = "Áo thun Uniqlo",   amount = 299_000,    type = "EXPENSE", category = "Mua sắm",    date = daysAgo(2), note = ""),
                 TransactionEntity(title = "Xăng xe",           amount = 150_000,    type = "EXPENSE", category = "Di chuyển",  date = daysAgo(3), note = ""),
@@ -69,7 +73,8 @@ abstract class AppDatabase : RoomDatabase() {
                 TransactionEntity(title = "Karaoke",           amount = 200_000,    type = "EXPENSE", category = "Giải trí",   date = daysAgo(6), note = ""),
                 TransactionEntity(title = "Tiền điện",         amount = 380_000,    type = "EXPENSE", category = "Hóa đơn",    date = daysAgo(7), note = ""),
             )
-            dao.insertTransactions(samples)
+            // Sửa lỗi Unresolved reference bằng cách insert từng cái
+            samples.forEach { dao.insertTransaction(it) }
         }
 
         fun closeDatabase() {

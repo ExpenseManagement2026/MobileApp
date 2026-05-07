@@ -8,6 +8,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,11 +29,19 @@ import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.data.PieData
 import com.github.mikephil.charting.data.PieDataSet
 import java.text.NumberFormat
+import java.util.Calendar
 import java.util.Locale
 
 private fun formatCurrency(amount: Long): String {
     val formatter = NumberFormat.getNumberInstance(Locale("vi", "VN"))
     return "${formatter.format(amount)} đ"
+}
+
+private fun monthYearText(month: Int, year: Int): String {
+    val cal = Calendar.getInstance()
+    cal.set(Calendar.MONTH, month)
+    cal.set(Calendar.YEAR, year)
+    return java.text.SimpleDateFormat("'Tháng' MM/yyyy", Locale("vi", "VN")).format(cal.time)
 }
 
 @Composable
@@ -55,7 +66,7 @@ fun DashboardScreen(
             .background(Color(0xFFF5F5F5))
             .verticalScroll(rememberScrollState())
     ) {
-        // Header
+        // ── Header ──────────────────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -63,7 +74,15 @@ fun DashboardScreen(
                 .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
             Column {
-                Text("Tháng 4/2024", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                // Month picker (từ main)
+                MonthPicker(
+                    month = uiState.selectedMonth.month,
+                    year = uiState.selectedMonth.year,
+                    isCurrentMonth = viewModel.isCurrentMonth(),
+                    onPrevious = { viewModel.previousMonth() },
+                    onNext = { viewModel.nextMonth() },
+                )
+                
                 Spacer(modifier = Modifier.height(12.dp))
                 Card(
                     shape = RoundedCornerShape(16.dp),
@@ -71,12 +90,21 @@ fun DashboardScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Tổng chi tiêu tháng này", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
+                        Text(
+                            "Tổng chi tiêu ${monthYearText(uiState.selectedMonth.month, uiState.selectedMonth.year)}",
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 13.sp
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
                         if (uiState.isLoading) {
                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                         } else {
-                            Text(formatCurrency(uiState.totalExpense), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                            Text(
+                                formatCurrency(uiState.totalExpense),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 28.sp
+                            )
                         }
                     }
                 }
@@ -85,7 +113,7 @@ fun DashboardScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Tổng thu / tổng chi
+        // ── Tổng thu / tổng chi ─────────────────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -96,37 +124,37 @@ fun DashboardScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // PieChart
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Chi tiêu theo danh mục", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                if (uiState.isLoading) {
-                    Box(Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = greenColor)
-                    }
-                } else {
-                    AndroidView(
-                        modifier = Modifier.fillMaxWidth().height(260.dp),
-                        factory = { context -> PieChart(context).apply { configurePieChart(this, uiState) } },
-                        update = { chart -> configurePieChart(chart, uiState) }
+        // ── PieChart ────────────────────────────────────────────────────────
+        DashboardCard(title = "Chi tiêu theo danh mục") {
+            if (uiState.isLoading) {
+                Box(Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = greenColor)
+                }
+            } else if (uiState.pieEntries.isEmpty()) {
+                Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        "Không có chi tiêu trong tháng này",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        fontSize = 14.sp
                     )
                 }
+            } else {
+                AndroidView(
+                    modifier = Modifier.fillMaxWidth().height(260.dp),
+                    factory = { ctx -> PieChart(ctx).apply { configurePieChart(this, uiState) } },
+                    update = { chart -> configurePieChart(chart, uiState) }
+                )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Top danh mục
+        // ── Top danh mục ────────────────────────────────────────────────────
         DashboardCategoryCard("Top chi tiêu", uiState.topCategories, uiState.isLoading, uiState.totalExpense) { selectedCategory = it }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // ── Tất cả danh mục ─────────────────────────────────────────────────
         DashboardCategoryCard("Tất cả danh mục", uiState.allCategories, uiState.isLoading, uiState.totalExpense) { selectedCategory = it }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -138,6 +166,65 @@ fun DashboardScreen(
             transactions = viewModel.getTransactionsByCategory(category.name),
             onDismiss = { selectedCategory = null }
         )
+    }
+}
+
+@Composable
+private fun MonthPicker(
+    month: Int,
+    year: Int,
+    isCurrentMonth: Boolean,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        IconButton(onClick = onPrevious) {
+            Icon(
+                imageVector = Icons.Default.ChevronLeft,
+                contentDescription = "Tháng trước",
+                tint = Color.White,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        Text(
+            text = monthYearText(month, year),
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            modifier = Modifier.weight(1f),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        IconButton(
+            onClick = onNext,
+            enabled = !isCurrentMonth
+        ) {
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Tháng sau",
+                tint = if (isCurrentMonth) Color.White.copy(alpha = 0.3f) else Color.White,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DashboardCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            content()
+        }
     }
 }
 
@@ -200,7 +287,11 @@ private fun CategoryRow(category: SpendingCategory, totalExpense: Long, onClick:
     val dotColor = Color(AndroidColor.parseColor(category.colorHex))
     val percent = if (totalExpense > 0) (category.amount * 100f / totalExpense) else 0f
     Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.size(12.dp).clip(CircleShape).background(dotColor))
@@ -258,8 +349,8 @@ private fun TransactionHistoryDialog(
                 if (transactions.isEmpty()) {
                     Text("Chưa có giao dịch nào", color = Color(0xFF9E9E9E), modifier = Modifier.padding(vertical = 16.dp))
                 } else {
-                    transactions.forEach { transaction ->
-                        DialogTransactionItem(transaction)
+                    transactions.forEach { tx ->
+                        DialogTransactionItem(tx)
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color(0xFFF0F0F0))
                     }
                 }
@@ -278,7 +369,6 @@ private fun DialogTransactionItem(transaction: Transaction) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
             Text(transaction.title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF212121))
-            Spacer(modifier = Modifier.height(4.dp))
             Text(dateStr, fontSize = 12.sp, color = Color(0xFF9E9E9E))
         }
         Text(formatCurrency(transaction.amount), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFEF5350))
