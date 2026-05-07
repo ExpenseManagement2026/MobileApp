@@ -5,20 +5,13 @@ import java.util.Calendar
 
 class BudgetPreferences(context: Context) {
 
-    // SharedPreferences để lưu dữ liệu local
     private val prefs = context.getSharedPreferences("budget_prefs", Context.MODE_PRIVATE)
 
     companion object {
-        // Key prefix dùng để lưu budget theo tháng
         private const val KEY_BUDGET_PREFIX = "key_budget_"
+        private const val KEY_BUDGET_OLD = "key_budget" // Key cũ của bạn
     }
 
-    /**
-     * Lưu ngân sách cho một tháng cụ thể
-     * @param amount số tiền ngân sách
-     * @param month tháng (0-11, Calendar.MONTH)
-     * @param year năm
-     */
     fun saveBudget(amount: Long, month: Int, year: Int) {
         val key = "${KEY_BUDGET_PREFIX}${year}_${month}"
         prefs.edit()
@@ -26,28 +19,21 @@ class BudgetPreferences(context: Context) {
             .apply()
     }
 
-    /**
-     * Lấy ngân sách của một tháng cụ thể
-     * @param month tháng (0-11, Calendar.MONTH)
-     * @param year năm
-     * @return budget đã lưu, nếu chưa có trả về 0
-     */
     fun getBudget(month: Int, year: Int): Long {
         val key = "${KEY_BUDGET_PREFIX}${year}_${month}"
-        return prefs.getLong(key, 0L)
+        val monthBudget = prefs.getLong(key, 0L)
+        
+        // DỰ PHÒNG: Nếu tháng này chưa có ngân sách, lấy ngân sách chung (key cũ)
+        return if (monthBudget > 0L) monthBudget else prefs.getLong(KEY_BUDGET_OLD, 0L)
     }
 
-    /**
-     * Lưu ngân sách cho tháng hiện tại (backward compatibility)
-     */
     fun saveBudget(amount: Long) {
+        // Lưu cho cả key tháng và key cũ để đảm bảo tính tương thích
         val cal = Calendar.getInstance()
         saveBudget(amount, cal.get(Calendar.MONTH), cal.get(Calendar.YEAR))
+        prefs.edit().putLong(KEY_BUDGET_OLD, amount).apply()
     }
 
-    /**
-     * Lấy ngân sách tháng hiện tại (backward compatibility)
-     */
     fun getBudget(): Long {
         val cal = Calendar.getInstance()
         return getBudget(cal.get(Calendar.MONTH), cal.get(Calendar.YEAR))
